@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 
-namespace TradingApis.mt4_api;
+namespace TradingApis.MT4Api;
 
 internal interface IMT4EventHandler
 {

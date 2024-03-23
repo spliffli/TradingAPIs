@@ -1,5 +1,5 @@
 ﻿using Newtonsoft.Json.Linq;
-using TradingApis.mt4_api;
+using TradingApis.MT4Api;
 
 namespace TradingApis;
 
