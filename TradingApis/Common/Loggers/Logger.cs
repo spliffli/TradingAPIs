@@ -1,9 +1,6 @@
-﻿using System.Collections.Concurrent;
-using System.Globalization;
-using Microsoft.Extensions.Logging;
+﻿using System.Globalization;
 
-
-namespace TradingApis;
+namespace TradingApis.Common.Loggers;
 
 public abstract class Logger
 {

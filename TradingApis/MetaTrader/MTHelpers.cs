@@ -1,8 +1,8 @@
 ﻿using System.Globalization;
 
-namespace TradingApis;
+namespace TradingApis.MetaTrader;
 
-public class MT4Helpers
+public class MTHelpers
 {
 
     /*Prints to console output.

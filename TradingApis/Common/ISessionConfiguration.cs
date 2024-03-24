@@ -1,4 +1,4 @@
-﻿namespace TradingApis;
+﻿namespace TradingApis.Common;
 
 public interface ISessionConfiguration
 {

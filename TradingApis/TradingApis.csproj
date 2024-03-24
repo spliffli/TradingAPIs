@@ -12,4 +12,9 @@
     <PackageReference Include="Salaros.ConfigParser" Version="0.3.8" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="FixApi\" />
+    <Folder Include="MetaTraderZmq\" />
+  </ItemGroup>
+
 </Project>

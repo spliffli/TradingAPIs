@@ -1,4 +1,4 @@
-﻿namespace TradingApis;
+﻿namespace TradingApis.Common.Orders;
 
 public interface IOrder
 {

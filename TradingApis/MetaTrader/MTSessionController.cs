@@ -1,17 +1,19 @@
-﻿using System.Globalization;
+﻿using TradingApis.Common;
+using TradingApis.Common.Loggers;
+using TradingApis.Common.Orders;
 
-namespace TradingApis;
+namespace TradingApis.MetaTrader;
 
-public class MT4SessionController : TradingSessionController
+public class MTSessionController : TradingSessionController
 {
     private Thread _instanceThread;
-    private MT4Configuration _config;
-    private MT4EventHandler _eventHandler;
-    private MT4ConnectionClient _client;
+    private MTConfiguration _config;
+    private MTEventHandler _eventHandler;
+    private MTConnectionClient _client;
     private Logger _logger;
 
 
-    public MT4SessionController(MT4Configuration config, MT4EventHandler eventHandler, Logger logger) 
+    public MTSessionController(MTConfiguration config, MTEventHandler eventHandler, Logger logger) 
         : base(eventHandler, logger)
     {
         // Initialize the config and the thread
@@ -24,7 +26,7 @@ public class MT4SessionController : TradingSessionController
     public override void Run()
     {
         // Start the connection client
-        _client = new MT4ConnectionClient(_eventHandler, _config.MetaTraderDirPath, _logger);
+        _client = new MTConnectionClient(_eventHandler, _config.MetaTraderDirPath, _logger);
         _client.Start();
     }
 

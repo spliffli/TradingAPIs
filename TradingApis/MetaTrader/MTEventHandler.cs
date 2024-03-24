@@ -1,11 +1,12 @@
 ﻿using Newtonsoft.Json.Linq;
-using TradingApis.MT4Api;
+using TradingApis.Common;
+using TradingApis.Common.Loggers;
 
-namespace TradingApis;
+namespace TradingApis.MetaTrader;
 
-public class MT4EventHandler : IMT4EventHandler, IEventHandler
+public class MTEventHandler : IMTEventHandler, IEventHandler
 {
-    private MT4Configuration _config;
+    private MTConfiguration _config;
     private Logger _logger;
     private bool _verbose;
     
@@ -17,7 +18,7 @@ public class MT4EventHandler : IMT4EventHandler, IEventHandler
 
 
     // Constructor
-    public MT4EventHandler(MT4Configuration config, Logger logger, bool verbose=true)
+    public MTEventHandler(MTConfiguration config, Logger logger, bool verbose=true)
     {
         _config = config;
         _logger = logger;
@@ -49,7 +50,7 @@ public class MT4EventHandler : IMT4EventHandler, IEventHandler
         }
     }
 
-    public void Start(MT4ConnectionClient client)
+    public void Start(MTConnectionClient client)
     {
         if (!SubscribeSymbolsTickData && !SubscribeSymbolsBarData)
             throw new ArgumentException(
@@ -81,7 +82,7 @@ public class MT4EventHandler : IMT4EventHandler, IEventHandler
     }
 
     // OnTick method to handle tick data from MT4
-    public void OnTick(MT4ConnectionClient client, string symbol, double bid, double ask)
+    public void OnTick(MTConnectionClient client, string symbol, double bid, double ask)
     {
         // Logic to process the tick data
         // For example, logging the tick data or performing some analysis
@@ -102,7 +103,7 @@ public class MT4EventHandler : IMT4EventHandler, IEventHandler
         // }
     }
 
-    public void OnBarData(MT4ConnectionClient client, string symbol, string timeFrame, string time, double open, double high,
+    public void OnBarData(MTConnectionClient client, string symbol, string timeFrame, string time, double open, double high,
         double low, double close, int tickVolume)
     {
         Console.WriteLine("onBarData: " + symbol + ", " + timeFrame + ", " + time + ", " + open + ", " + high + ", " + low + ", " + close + ", " + tickVolume);
@@ -111,18 +112,18 @@ public class MT4EventHandler : IMT4EventHandler, IEventHandler
             Console.WriteLine(x.Key + ": " + x.Value);
     }
 
-    public void OnHistoricData(MT4ConnectionClient client, string symbol, string timeFrame, JObject data)
+    public void OnHistoricData(MTConnectionClient client, string symbol, string timeFrame, JObject data)
     {
         // you can also access historic data via: client.HistoricData.keySet()
         Console.WriteLine("onHistoricData: " + symbol + ", " + timeFrame + ", " + data);
     }
 
-    public void OnHistoricTrades(MT4ConnectionClient client)
+    public void OnHistoricTrades(MTConnectionClient client)
     {
         Console.WriteLine("OnHistoricTrades: " + client.HistoricTrades);
     }
 
-    public void OnMessage(MT4ConnectionClient client, JObject message)
+    public void OnMessage(MTConnectionClient client, JObject message)
     {
         if (((string)message["type"]).Equals("ERROR"))
             Console.WriteLine(message["type"] + " | " + message["error_type"] + " | " + message["description"]);
@@ -130,7 +131,7 @@ public class MT4EventHandler : IMT4EventHandler, IEventHandler
             Console.WriteLine(message["type"] + " | " + message["message"]);
     }
 
-    public void OnOrderEvent(MT4ConnectionClient client)
+    public void OnOrderEvent(MTConnectionClient client)
     {
         Console.WriteLine("onOrderEvent: " + client.OpenOrders.Count + " open orders");
 

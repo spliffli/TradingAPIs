@@ -1,9 +1,9 @@
-﻿using System.Globalization;
-using Salaros.Configuration;
+﻿using Salaros.Configuration;
+using TradingApis.Common;
 
-namespace TradingApis;
+namespace TradingApis.MetaTrader;
 
-public class MT4Configuration : ISessionConfiguration
+public class MTConfiguration : ISessionConfiguration
 {
     // The name of the configuration
     public string Name { get; set; }
@@ -16,7 +16,7 @@ public class MT4Configuration : ISessionConfiguration
 
 
     // Constructor for the MT4Configuration class that initializes configuration using a specified file path.
-    public MT4Configuration(string configFilePath)
+    public MTConfiguration(string configFilePath)
     {
         // Initialize a ConfigParser object with custom settings to parse the configuration file.
         var configFileFromPath = new ConfigParser(configFilePath, new ConfigParserSettings
@@ -125,7 +125,7 @@ public class MT4Configuration : ISessionConfiguration
         return ret;
     }
 
-    public MT4Configuration(string metaTraderDirPath, string name, bool subscribeToTickData = true, bool subscribeToBarData = false, string[] symbolsTickData = null, string[,] symbolsBarData = null)
+    public MTConfiguration(string metaTraderDirPath, string name, bool subscribeToTickData = true, bool subscribeToBarData = false, string[] symbolsTickData = null, string[,] symbolsBarData = null)
     {
         Name = name;
         MetaTraderDirPath = metaTraderDirPath;

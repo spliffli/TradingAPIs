@@ -1,15 +1,12 @@
-﻿using System;
-using System.IO;
-using System.Threading;
-using System.Collections;
+﻿using System.Collections;
 using Newtonsoft.Json.Linq;
+using TradingApis.Common.Loggers;
 
+namespace TradingApis.MetaTrader;
 
-namespace TradingApis;
-
-public class MT4ConnectionClient
+public class MTConnectionClient
 {
-    private readonly MT4EventHandler _eventHandler;
+    private readonly MTEventHandler _eventHandler;
     private string _metaTraderDirPath;  // { get; private set; }
     private readonly Logger _logger;
     private readonly int _sleepDelayMilliseconds;
@@ -57,7 +54,7 @@ public class MT4ConnectionClient
     private readonly Thread _historicDataThread;
 
     // Constructor definition with parameters for configuration
-    public MT4ConnectionClient(MT4EventHandler eventHandler, string metaTraderDirPath, Logger logger, int sleepDelayMilliseconds = 5, int maxRetryCommandSeconds = 10, bool loadOrdersFromFile = true, bool verbose = true)
+    public MTConnectionClient(MTEventHandler eventHandler, string metaTraderDirPath, Logger logger, int sleepDelayMilliseconds = 5, int maxRetryCommandSeconds = 10, bool loadOrdersFromFile = true, bool verbose = true)
     {
         _logger = logger;
         _logger.Log("MT4ConnectionClient(): Initializing...");
@@ -147,7 +144,7 @@ public class MT4ConnectionClient
         _logger.Log("MT4ConnectionClient(): Initialization complete.");
     }
 
-    public MT4ConnectionClient(string pathHistoricTrades)
+    public MTConnectionClient(string pathHistoricTrades)
     {
         _pathHistoricTrades = pathHistoricTrades;
     }
@@ -173,7 +170,7 @@ public class MT4ConnectionClient
             if (!_start)
                 continue;
 
-            string text = MT4Helpers.TryReadFile(_pathOrders);
+            string text = MTHelpers.TryReadFile(_pathOrders);
 
             if (text.Length == 0 || text.Equals(_lastOpenOrdersStr))
                 continue;
@@ -222,7 +219,7 @@ public class MT4ConnectionClient
             AccountInfo = (JObject)data["account_info"];
 
             if (_loadOrdersFromFile)
-                MT4Helpers.TryWriteToFile(_pathOrdersStored, data.ToString());
+                MTHelpers.TryWriteToFile(_pathOrdersStored, data.ToString());
 
             if (_eventHandler != null && newEvent)
                 _eventHandler.OnOrderEvent(this);
@@ -243,7 +240,7 @@ public class MT4ConnectionClient
             if (!_start)
                 continue;
 
-            string text = MT4Helpers.TryReadFile(_pathMessages);
+            string text = MTHelpers.TryReadFile(_pathMessages);
 
             if (text.Length == 0 || text.Equals(_lastMessagesStr))
                 continue;
@@ -290,7 +287,7 @@ public class MT4ConnectionClient
                     }
                 }
             }
-            MT4Helpers.TryWriteToFile(_pathMessagesStored, data.ToString());
+            MTHelpers.TryWriteToFile(_pathMessagesStored, data.ToString());
         }
     }
 
@@ -308,7 +305,7 @@ public class MT4ConnectionClient
             if (!_start)
                 continue;
 
-            string text = MT4Helpers.TryReadFile(_pathMarketData);
+            string text = MTHelpers.TryReadFile(_pathMarketData);
 
             if (text.Length == 0 || text.Equals(_lastMarketDataStr))
                 continue;
@@ -363,7 +360,7 @@ public class MT4ConnectionClient
             if (!_start)
                 continue;
 
-            string text = MT4Helpers.TryReadFile(_pathBarData);
+            string text = MTHelpers.TryReadFile(_pathBarData);
 
             if (text.Length == 0 || text.Equals(_lastBarDataStr))
                 continue;
@@ -425,7 +422,7 @@ public class MT4ConnectionClient
             if (!_start)
                 continue;
 
-            string text = MT4Helpers.TryReadFile(_pathHistoricData);
+            string text = MTHelpers.TryReadFile(_pathHistoricData);
 
             if (text.Length > 0 && !text.Equals(_lastHistoricDataStr))
             {
@@ -449,7 +446,7 @@ public class MT4ConnectionClient
                         HistoricData[x.Key] = data[x.Key];
                     }
 
-                    MT4Helpers.TryDeleteFile(_pathHistoricData);
+                    MTHelpers.TryDeleteFile(_pathHistoricData);
 
                     if (_eventHandler != null)
                     {
@@ -469,7 +466,7 @@ public class MT4ConnectionClient
             }
 
             // also check historic trades in the same thread. 
-            text = MT4Helpers.TryReadFile(_pathHistoricTrades);
+            text = MTHelpers.TryReadFile(_pathHistoricTrades);
 
             if (text.Length > 0 && !text.Equals(_lastHistoricTradesStr))
             {
@@ -490,7 +487,7 @@ public class MT4ConnectionClient
                 {
                     HistoricTrades = data;
 
-                    MT4Helpers.TryDeleteFile(_pathHistoricTrades);
+                    MTHelpers.TryDeleteFile(_pathHistoricTrades);
 
                     if (_eventHandler != null)
                         _eventHandler.OnHistoricTrades(this);
@@ -507,7 +504,7 @@ public class MT4ConnectionClient
     private void LoadOrders()
     {
 
-        string text = MT4Helpers.TryReadFile(_pathOrdersStored);
+        string text = MTHelpers.TryReadFile(_pathOrdersStored);
 
         if (text.Length == 0)
             return;
@@ -537,7 +534,7 @@ public class MT4ConnectionClient
     private void LoadMessages()
     {
 
-        string text = MT4Helpers.TryReadFile(_pathMessagesStored);
+        string text = MTHelpers.TryReadFile(_pathMessagesStored);
 
         if (text.Length == 0)
             return;
@@ -675,7 +672,7 @@ public class MT4ConnectionClient
     */
     public void OpenOrder(string symbol, string orderType, double lots, double price, double stopLoss, double takeProfit, int magic, string comment, long expiration)
     {
-        string content = symbol + "," + orderType + "," + MT4Helpers.Format(lots) + "," + MT4Helpers.Format(price) + "," + MT4Helpers.Format(stopLoss) + "," + MT4Helpers.Format(takeProfit) + "," + magic + "," + comment + "," + expiration;
+        string content = symbol + "," + orderType + "," + MTHelpers.Format(lots) + "," + MTHelpers.Format(price) + "," + MTHelpers.Format(stopLoss) + "," + MTHelpers.Format(takeProfit) + "," + magic + "," + comment + "," + expiration;
         SendCommand("OPEN_ORDER", content);
     }
 
@@ -693,7 +690,7 @@ public class MT4ConnectionClient
     */
     public void ModifyOrder(int ticket, double price, double stopLoss, double takeProfit, long expiration)
     {
-        string content = ticket + "," + MT4Helpers.Format(price) + "," + MT4Helpers.Format(stopLoss) + "," + MT4Helpers.Format(takeProfit) + "," + expiration;
+        string content = ticket + "," + MTHelpers.Format(price) + "," + MTHelpers.Format(stopLoss) + "," + MTHelpers.Format(takeProfit) + "," + expiration;
         SendCommand("MODIFY_ORDER", content);
     }
 
@@ -707,7 +704,7 @@ public class MT4ConnectionClient
     */
     public void CloseOrder(int ticket, double lots = 0)
     {
-        string content = ticket + "," + MT4Helpers.Format(lots);
+        string content = ticket + "," + MTHelpers.Format(lots);
         SendCommand("CLOSE_ORDER", content);
     }
 
@@ -792,7 +789,7 @@ public class MT4ConnectionClient
                 for (int i = 0; i < MaxCommandFiles; i++)
                 {
                     string filePath = _pathCommandsPrefix + i + ".txt";
-                    if (!File.Exists(filePath) && MT4Helpers.TryWriteToFile(filePath, text))
+                    if (!File.Exists(filePath) && MTHelpers.TryWriteToFile(filePath, text))
                     {
                         success = true;
                         break;

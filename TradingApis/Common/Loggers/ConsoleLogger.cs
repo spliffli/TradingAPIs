@@ -1,7 +1,4 @@
-﻿using System.Globalization;
-using System.Runtime.CompilerServices;
-
-namespace TradingApis;
+﻿namespace TradingApis.Common.Loggers;
 
 public class ConsoleLogger : Logger
 {

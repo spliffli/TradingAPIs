@@ -1,6 +1,4 @@
-﻿using System.Globalization;
-
-namespace TradingApis;
+﻿namespace TradingApis.Common.Loggers;
 
 public class FileLogger : Logger
 {
