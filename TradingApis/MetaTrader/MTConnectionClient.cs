@@ -1,10 +1,11 @@
 ﻿using System.Collections;
 using Newtonsoft.Json.Linq;
+using TradingApis.Common;
 using TradingApis.Common.Loggers;
 
 namespace TradingApis.MetaTrader;
 
-public class MTConnectionClient
+public class MTConnectionClient : IConnectionClient
 {
     private readonly MTEventHandler _eventHandler;
     private string _metaTraderDirPath;  // { get; private set; }
@@ -53,18 +54,45 @@ public class MTConnectionClient
     private readonly Thread _barDataThread;
     private readonly Thread _historicDataThread;
 
+    public bool SubscribeToTickData { get; set; }
+    public bool SubscribeToBarData { get; set; }
+    public string[] SymbolsTickData { get; set; }
+    public string[,] SymbolsBarData { get; set; }
+
     // Constructor definition with parameters for configuration
-    public MTConnectionClient(MTEventHandler eventHandler, string metaTraderDirPath, Logger logger, int sleepDelayMilliseconds = 5, int maxRetryCommandSeconds = 10, bool loadOrdersFromFile = true, bool verbose = true)
+    public MTConnectionClient(MTConfiguration config, MTEventHandler eventHandler, Logger logger, int sleepDelayMilliseconds = 5, int maxRetryCommandSeconds = 10, bool loadOrdersFromFile = true, bool verbose = true)
     {
         _logger = logger;
         _logger.Log("MT4ConnectionClient(): Initializing...");
 
-        // Temporary thread object instantiation (misplaced and unused; likely an error in the original code from DWX)
-        Thread openOrdersThread;
+        if (config == null)
+            throw new ArgumentException("config cannot be null.");
+        if (logger == null)
+            throw new ArgumentException("logger cannot be null.");
+
+        if (config.SubscribeToTickData)
+        {
+            SubscribeToTickData = true;
+
+            if (config.SymbolsTickData == null || config.SymbolsTickData.Length == 0)
+                throw new ArgumentException("SymbolsTickData cannot be null or empty if SubscribeToTickData is true.");
+
+            SymbolsTickData = config.SymbolsTickData;
+        }
+
+        if (config.SubscribeToBarData)
+        {
+            SubscribeToBarData = true;
+
+            if (config.SymbolsBarData == null || config.SymbolsBarData.Length == 0)
+                throw new ArgumentException("SymbolsBarData cannot be null or empty if SubscribeToBarData is true.");
+
+            SymbolsBarData = config.SymbolsBarData;
+        }
 
         // Assign the constructor parameters to the class's fields
         _eventHandler = eventHandler;                          // Event handler for managing MT4 events
-        _metaTraderDirPath = metaTraderDirPath;                // Directory path of the MetaTrader installation
+        _metaTraderDirPath = config.MetaTraderDirPath;         // Directory path of the MetaTrader installation
         _sleepDelayMilliseconds = sleepDelayMilliseconds;      // Sleep delay in milliseconds between checks
         _maxRetryCommandSeconds = maxRetryCommandSeconds;      // Maximum time in seconds to retry a command
         _loadOrdersFromFile = loadOrdersFromFile;              // Flag to load orders from a file
@@ -73,7 +101,7 @@ public class MTConnectionClient
         // Check if the MetaTrader directory path exists; if not, exit the program
         if (!Directory.Exists(_metaTraderDirPath))
         {
-            Console.WriteLine("ERROR: metaTraderDirPath does not exist! metaTraderDirPath: " + metaTraderDirPath);
+            Console.WriteLine("ERROR: metaTraderDirPath does not exist! metaTraderDirPath: " + _metaTraderDirPath);
             Environment.Exit(1);
         }
 
@@ -138,7 +166,7 @@ public class MTConnectionClient
             Thread.Sleep(1000); // Wait for 1 second before starting
             _logger.Log("MT4ConnectionClient(): Starting processing with an event handler.");
             Start();
-            eventHandler.Start(this); // Start the event handler, passing this instance for context
+            // eventHandler.Start(this); // Start the event handler, passing this instance for context
         }
 
         _logger.Log("MT4ConnectionClient(): Initialization complete.");
@@ -154,6 +182,33 @@ public class MTConnectionClient
     public void Start()
     {
         _start = true;
+
+        if (!SubscribeToTickData && !SubscribeToBarData)
+            throw new ArgumentException(
+                "At least one of SubscribeSymbolsTickData or SubscribeSymbolsBarData must be true to start the MT4EventHandler.");
+
+        // Logic to Start handling events from the MT4 instance
+        // account information is stored in client.AccountInfo.
+        // open orders are stored in client.OpenOrders.
+        // historic trades are stored in client.HistoricTrades.
+
+        Console.WriteLine("\nAccount info:\n" + AccountInfo + "\n");
+
+        if (SubscribeToTickData)
+        {
+            // subscribe to tick data:
+            // string[] symbolsTickData = { "EURUSD", "GBPUSD" };
+            Console.WriteLine("Subscribing to tick data.");
+            SubscribeSymbolsTickData(SymbolsTickData);
+        }
+
+        if (SubscribeToBarData)
+        {
+            // subscribe to bar data:
+            Console.WriteLine("Subscribing to bar data.");
+            // string[,] symbolsBarData = new string[,] { { "EURUSD", "M1" }, { "AUDCAD", "M5" }, { "GBPCAD", "M15" } };
+            SubscribeSymbolsBarData(SymbolsBarData);
+        }
     }
 
 

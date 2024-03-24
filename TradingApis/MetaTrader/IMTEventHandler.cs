@@ -4,7 +4,6 @@ namespace TradingApis.MetaTrader;
 
 internal interface IMTEventHandler
 {
-    public void Start(MTConnectionClient client);
     void OnTick(MTConnectionClient client, string symbol, double bid, double ask);
 
     public void OnBarData(MTConnectionClient client, string symbol, string timeFrame, string time, double open, double high, double low, double close, int tickVolume);

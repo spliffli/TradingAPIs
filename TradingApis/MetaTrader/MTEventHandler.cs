@@ -18,68 +18,12 @@ public class MTEventHandler : IMTEventHandler, IEventHandler
 
 
     // Constructor
-    public MTEventHandler(MTConfiguration config, Logger logger, bool verbose=true)
+    public MTEventHandler(Logger logger, bool verbose=true)
     {
-        _config = config;
         _logger = logger;
         _verbose = verbose;
-
-        if (config == null)
-            throw new ArgumentException("config cannot be null.");
-        if (logger == null)
-            throw new ArgumentException("logger cannot be null.");
-
-        if (config.SubscribeToTickData)
-        {
-            SubscribeSymbolsTickData = true;
-
-            if (config.SymbolsTickData == null || config.SymbolsTickData.Length == 0)
-                throw new ArgumentException("SymbolsTickData cannot be null or empty if SubscribeToTickData is true.");
-
-            SymbolsTickData = config.SymbolsTickData;
-        }
-
-        if (config.SubscribeToBarData)
-        {
-            SubscribeSymbolsBarData = true;
-
-            if (config.SymbolsBarData == null || config.SymbolsBarData.Length == 0)
-                throw new ArgumentException("SymbolsBarData cannot be null or empty if SubscribeToBarData is true.");
-
-            SymbolsBarData = config.SymbolsBarData;
-        }
     }
 
-    public void Start(MTConnectionClient client)
-    {
-        if (!SubscribeSymbolsTickData && !SubscribeSymbolsBarData)
-            throw new ArgumentException(
-                "At least one of SubscribeSymbolsTickData or SubscribeSymbolsBarData must be true to start the MT4EventHandler.");
-
-        // Logic to Start handling events from the MT4 instance
-        // account information is stored in client.AccountInfo.
-        // open orders are stored in client.OpenOrders.
-        // historic trades are stored in client.HistoricTrades.
-        
-        Console.WriteLine("\nAccount info:\n" + client.AccountInfo + "\n");
-
-        if (SubscribeSymbolsTickData)
-        {
-            // subscribe to tick data:
-            // string[] symbolsTickData = { "EURUSD", "GBPUSD" };
-            Console.WriteLine("Subscribing to tick data.");
-            client.SubscribeSymbolsTickData(SymbolsTickData);
-        }
-
-        if (SubscribeSymbolsBarData)
-        {
-            // subscribe to bar data:
-            Console.WriteLine("Subscribing to bar data.");
-            // string[,] symbolsBarData = new string[,] { { "EURUSD", "M1" }, { "AUDCAD", "M5" }, { "GBPCAD", "M15" } };
-            client.SubscribeSymbolsBarData(SymbolsBarData);
-        }
-
-    }
 
     // OnTick method to handle tick data from MT4
     public void OnTick(MTConnectionClient client, string symbol, double bid, double ask)

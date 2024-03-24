@@ -7,18 +7,18 @@ public abstract class TradingSessionController
 {
     private readonly Thread _instanceThread;
     private readonly Logger _logger;
-    private readonly IEventHandler _eventHandler;
+    private readonly IConnectionClient _connectionClient;
 
     public bool IsRunning { get; private set; }
 
-    public TradingSessionController(IEventHandler eventHandler, Logger logger)
+    internal TradingSessionController(IConnectionClient connectionClient, Logger logger)
     {
         // Initialize the config and the thread
         // _config = config;
 
         _instanceThread = new Thread(new ThreadStart(Run));
         _logger = logger;
-        _eventHandler = eventHandler;
+        _connectionClient = connectionClient;
     }
     public void StartThread()
     {

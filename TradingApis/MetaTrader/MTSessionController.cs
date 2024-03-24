@@ -13,20 +13,20 @@ public class MTSessionController : TradingSessionController
     private Logger _logger;
 
 
-    public MTSessionController(MTConfiguration config, MTEventHandler eventHandler, Logger logger) 
-        : base(eventHandler, logger)
+    public MTSessionController(MTConfiguration config, MTConnectionClient client, Logger logger) 
+        : base(client, logger)
     {
         // Initialize the config and the thread
         _config = config;
         _instanceThread = new Thread(new ThreadStart(Run));
-        _eventHandler = eventHandler;
+        _client = client;
         _logger = logger;
     }
 
     public override void Run()
     {
         // Start the connection client
-        _client = new MTConnectionClient(_eventHandler, _config.MetaTraderDirPath, _logger);
+        // _client = new MTConnectionClient(_eventHandler, _config.MetaTraderDirPath, _logger);
         _client.Start();
     }
 
