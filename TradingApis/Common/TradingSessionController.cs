@@ -1,7 +1,7 @@
-﻿using TradingApis.Common.Loggers;
-using TradingApis.Common.Orders;
+﻿using TradingAPIs.Common.Loggers;
+using TradingAPIs.Common.Orders;
 
-namespace TradingApis.Common;
+namespace TradingAPIs.Common;
 
 public abstract class TradingSessionController
 {

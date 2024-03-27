@@ -1,6 +1,6 @@
 ﻿using System.Globalization;
 
-namespace TradingApis.MetaTrader;
+namespace TradingAPIs.MetaTrader;
 
 public class MTHelpers
 {

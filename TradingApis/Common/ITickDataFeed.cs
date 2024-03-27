@@ -1,4 +1,4 @@
-﻿namespace TradingApis.Common;
+﻿namespace TradingAPIs.Common;
 
 public interface ITickDataFeed
 {

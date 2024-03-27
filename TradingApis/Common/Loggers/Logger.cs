@@ -1,6 +1,6 @@
 ﻿using System.Globalization;
 
-namespace TradingApis.Common.Loggers;
+namespace TradingAPIs.Common.Loggers;
 
 public abstract class Logger
 {

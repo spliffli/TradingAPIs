@@ -1,4 +1,4 @@
-﻿namespace TradingApis.Common.Orders;
+﻿namespace TradingAPIs.Common.Orders;
 
 public enum OrderType
 {

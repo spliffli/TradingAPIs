@@ -1,4 +1,4 @@
-﻿namespace TradingApis.Common.Loggers;
+﻿namespace TradingAPIs.Common.Loggers;
 
 public class FileLogger : Logger
 {

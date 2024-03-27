@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 
-namespace TradingApis.MetaTrader;
+namespace TradingAPIs.MetaTrader;
 
 internal interface IMTEventHandler
 {

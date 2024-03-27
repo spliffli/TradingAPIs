@@ -1,7 +1,7 @@
 ﻿using Salaros.Configuration;
-using TradingApis.Common;
+using TradingAPIs.Common;
 
-namespace TradingApis.MetaTrader;
+namespace TradingAPIs.MetaTrader;
 
 public class MTConfiguration : ISessionConfiguration
 {

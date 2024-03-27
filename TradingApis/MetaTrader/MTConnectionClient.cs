@@ -1,9 +1,9 @@
 ﻿using System.Collections;
 using Newtonsoft.Json.Linq;
-using TradingApis.Common;
-using TradingApis.Common.Loggers;
+using TradingAPIs.Common;
+using TradingAPIs.Common.Loggers;
 
-namespace TradingApis.MetaTrader;
+namespace TradingAPIs.MetaTrader;
 
 public class MTConnectionClient : IConnectionClient
 {

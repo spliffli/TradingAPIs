@@ -1,8 +1,8 @@
-﻿using TradingApis.Common;
-using TradingApis.Common.Loggers;
-using TradingApis.Common.Orders;
+﻿using TradingAPIs.Common;
+using TradingAPIs.Common.Loggers;
+using TradingAPIs.Common.Orders;
 
-namespace TradingApis.MetaTrader;
+namespace TradingAPIs.MetaTrader;
 
 public class MTSessionController : TradingSessionController
 {

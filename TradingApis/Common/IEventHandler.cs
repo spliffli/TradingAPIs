@@ -1,6 +1,6 @@
-﻿using TradingApis.MetaTrader;
+﻿using TradingAPIs.MetaTrader;
 
-namespace TradingApis.Common;
+namespace TradingAPIs.Common;
 
 public interface IEventHandler
 {
