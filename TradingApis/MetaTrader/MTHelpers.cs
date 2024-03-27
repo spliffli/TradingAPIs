@@ -69,9 +69,9 @@ public class MTHelpers
 
 	public static string TryReadFile(string path)
 	{
-        var fileName = GetFileNameFromPath(path);
+		var fileName = GetFileNameFromPath(path);
 
-        try
+		try
 		{
 			return File.ReadAllText(path);
 		}
@@ -99,23 +99,23 @@ public class MTHelpers
 		File.Create(filepath).Dispose();
 	}
 
-    private static string GetFileNameFromPath(string path)
-    {
-        try
-        {
-            return path.Split("\\").Last();
-        }
-        catch (Exception)
-        {
-            try
-            {
-                return path.Split("/").Last();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                throw;
-            }
-        }
-    }
+	private static string GetFileNameFromPath(string path)
+	{
+		try
+		{
+			return path.Split("\\").Last();
+		}
+		catch (Exception)
+		{
+			try
+			{
+				return path.Split("/").Last();
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine(e);
+				throw;
+			}
+		}
+	}
 }
