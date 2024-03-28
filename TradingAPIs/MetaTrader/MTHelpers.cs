@@ -77,19 +77,19 @@ public class MTHelpers
 		}
 		catch (DirectoryNotFoundException)
 		{
-			Console.WriteLine("MT4Helpers.TryReadFile(): DirectoryNotFoundException. Returning empty string");
+			Console.WriteLine("MT4Helpers.TryReadFile | DirectoryNotFoundException. Returning empty string");
 			return "";
 		}
 		catch (FileNotFoundException)
 		{
 			Console.WriteLine(
-				$"MT4Helpers.TryReadFile(): FileNotFoundException. Creating empty file at path ({path}) & returning empty string");
+				$"MT4Helpers.TryReadFile | FileNotFoundException. Creating empty file at path ({path}) & returning empty string");
 			CreateEmptyFile(path);
 			return "";
 		}
 		catch (IOException)
 		{
-			Console.WriteLine("MT4Helpers.TryReadFile(): IOException. Race condition. Most likely this process and the MetaTrader EA both trying to access/use the file simultaneously. Returning empty string");
+			Console.WriteLine("MT4Helpers.TryReadFile | IOException. Race condition. Most likely this process and the MetaTrader EA both trying to access/use the file simultaneously. Returning empty string");
 			return "";
 		}
 	}

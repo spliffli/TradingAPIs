@@ -54,8 +54,10 @@ public class MTConnectionClient : IConnectionClient
     private readonly Thread _barDataThread;
     private readonly Thread _historicDataThread;
 
+    public bool StartCheckOpenOrdersThread { get; set; }
     public bool SubscribeToTickData { get; set; }
     public bool SubscribeToBarData { get; set; }
+    public bool StartCheckHistoricDataThread { get; set; }
     public string[] SymbolsTickData { get; set; }
     public string[,] SymbolsBarData { get; set; }
 
@@ -63,7 +65,7 @@ public class MTConnectionClient : IConnectionClient
     public MTConnectionClient(MTConfiguration config, MTEventHandler eventHandler, Logger logger, int sleepDelayMilliseconds = 5, int maxRetryCommandSeconds = 10, bool loadOrdersFromFile = true, bool verbose = true)
     {
         _logger = logger;
-        _logger.Log("MT4ConnectionClient(): Initializing...");
+        _logger.Log("MTConnectionClient | Initializing...");
 
         if (config == null)
             throw new ArgumentException("config cannot be null.");
@@ -106,7 +108,7 @@ public class MTConnectionClient : IConnectionClient
         }
 
         // Initialize the paths for various types of data files within the MetaTrader directory
-        _logger.Log("MT4ConnectionClient(): Initializing paths for data files within MetaTrader directory.");
+        _logger.Log("MTConnectionClient | Initializing paths for data files within MetaTrader directory.");
         _pathOrders = Path.Join(_metaTraderDirPath, "DWX", "DWX_Orders.txt");
         _pathMessages = Path.Join(_metaTraderDirPath, "DWX", "DWX_Messages.txt");
         _pathMarketData = Path.Join(_metaTraderDirPath, "DWX", "DWX_Market_Data.txt");
@@ -116,60 +118,88 @@ public class MTConnectionClient : IConnectionClient
         _pathOrdersStored = Path.Join(_metaTraderDirPath, "DWX", "DWX_Orders_Stored.txt");
         _pathMessagesStored = Path.Join(_metaTraderDirPath, "DWX", "DWX_Messages_Stored.txt");
         _pathCommandsPrefix = Path.Join(_metaTraderDirPath, "DWX", "DWX_Commands_");
-        _logger.Log("MT4ConnectionClient(): Paths initialized.");
+        _logger.Log("MTConnectionClient | Paths initialized.");
 
-        _logger.Log("MT4ConnectionClient(): Loading messages from file.");
+        _logger.Log("MTConnectionClient | Loading messages from file.");
         LoadMessages(); // Load the initial messages from the file
 
         if (loadOrdersFromFile)
         {
-            _logger.Log("MT4ConnectionClient(): Loading orders from file, as specified.");
+            _logger.Log("MTConnectionClient | Loading orders from file, as specified.");
             LoadOrders(); // Load the initial orders from the file, if specified
         }
 
         // Initialize and start threads for continuously checking and processing open orders, messages, market data, etc.
-        _logger.Log("MT4ConnectionClient(): Initializing and starting threads for continuous data processing...");
+        _logger.Log("MTConnectionClient | Initializing and starting threads for continuous data processing...");
 
-        _logger.Log("MT4ConnectionClient(): Starting thread for checking open orders.");
-        _openOrdersThread = new Thread(() => CheckOpenOrders());
-        _openOrdersThread.Start();
-
-        _logger.Log("MT4ConnectionClient(): Starting thread for checking messages.");
+        _logger.Log("MTConnectionClient | Starting thread for checking messages.");
         _messageThread = new Thread(() => CheckMessages());
         _messageThread.Start();
 
-        _logger.Log("MT4ConnectionClient(): Starting thread for checking market data.");
-        _marketDataThread = new Thread(() => CheckMarketData());
-        _marketDataThread.Start();
+        if (StartCheckOpenOrdersThread)
+        {
+            _logger.Log("MTConnectionClient | Starting thread for checking open orders.");
+            _openOrdersThread = new Thread(() => CheckOpenOrders());
+            _openOrdersThread.Start();
+        }
+        else
+        {
+            _logger.Log("MTConnectionClient | Not starting thread for checking open orders.");
+        }
 
-        _logger.Log("MT4ConnectionClient(): Starting thread for checking bar data.");
-        _barDataThread = new Thread(() => CheckBarData());
-        _barDataThread.Start();
+        if (SubscribeToTickData)
+        {
+            _logger.Log("MTConnectionClient | Starting thread for checking market data.");
+            _marketDataThread = new Thread(() => CheckMarketData());
+            _marketDataThread.Start();
+        }
+        else
+        {
+            _logger.Log("MTConnectionClient | Not starting thread for checking market data.");
+        }
 
-        _logger.Log("MT4ConnectionClient(): Starting thread for checking historic data.");
-        _historicDataThread = new Thread(() => CheckHistoricData());
-        _historicDataThread.Start();
+        if (SubscribeToBarData)
+        {
+            _logger.Log("MTConnectionClient | Starting thread for checking bar data.");
+            _barDataThread = new Thread(() => CheckBarData());
+            _barDataThread.Start();
+        }
+        else
+        {
+            _logger.Log("MTConnectionClient | Not starting thread for checking bar data.");
+        }
 
-        _logger.Log("MT4ConnectionClient(): Threads initialized and started.");
+        if (StartCheckHistoricDataThread)
+        {
+            _logger.Log("MTConnectionClient | Starting thread for checking historic data.");
+            _historicDataThread = new Thread(() => CheckHistoricData());
+            _historicDataThread.Start();
+        }
+        else
+        {
+            _logger.Log("MTConnectionClient | Not starting thread for checking historic data.");
+        }
 
-        _logger.Log("MT4ConnectionClient(): Resetting command IDs to their initial state.");
+        _logger.Log("MTConnectionClient | Threads initialized and started.");
+
+        _logger.Log("MTConnectionClient | Resetting command IDs to their initial state.");
         ResetCommandIDs(); // Reset command IDs to their initial state
 
         // Start processing. If an event handler is provided, delay the start slightly to ensure readiness
         if (eventHandler == null)
         {
-            _logger.Log("MT4ConnectionClient(): Starting processing without an event handler.");
+            _logger.Log("MTConnectionClient | Starting processing without an event handler.");
             Start();
         }
         else
         {
             Thread.Sleep(1000); // Wait for 1 second before starting
-            _logger.Log("MT4ConnectionClient(): Starting processing with an event handler.");
+            _logger.Log("MTConnectionClient | Starting processing with an event handler.");
             Start();
             // eventHandler.Start(this); // Start the event handler, passing this instance for context
         }
 
-        _logger.Log("MT4ConnectionClient(): Initialization complete.");
+        _logger.Log("MTConnectionClient | Initialization complete.");
     }
 
     public MTConnectionClient(string pathHistoricTrades)

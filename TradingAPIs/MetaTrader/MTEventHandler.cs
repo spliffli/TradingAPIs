@@ -9,13 +9,6 @@ public class MTEventHandler : IMTEventHandler, IEventHandler
     private MTConfiguration _config;
     private Logger _logger;
     private bool _verbose;
-    
-    public bool SubscribeSymbolsTickData { get; set; }
-    public bool SubscribeSymbolsBarData { get; set; }
-    public string[] SymbolsTickData { get; set; }
-    public string[,] SymbolsBarData { get; set; }
-
-
 
     // Constructor
     public MTEventHandler(Logger logger, bool verbose=true)

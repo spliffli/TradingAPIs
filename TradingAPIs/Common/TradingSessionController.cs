@@ -22,14 +22,14 @@ public abstract class TradingSessionController
     }
     public void StartThread()
     {
-        _logger.Log("TradingSessionController.StartThread(): Starting the trading session controller thread");
+        _logger.Log("TradingSessionController.StartThread | Starting the trading session controller thread");
         _instanceThread.Start();
         IsRunning = true;
     }
 
     public void StopThread()
     {
-        _logger.Log("TradingSessionController.StopThread(): Stopping the trading session controller thread");
+        _logger.Log("TradingSessionController.StopThread | Stopping the trading session controller thread");
         _instanceThread.Abort(); // This is not recommended, but it's a simple example
         IsRunning = false;
     }
