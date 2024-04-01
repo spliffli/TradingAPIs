@@ -4,16 +4,16 @@ using TradingAPIs.Common.Orders;
 
 namespace TradingAPIs.MetaTrader;
 
-public class MTSessionController : TradingSessionController
+public class MetaTraderSession : ClientSession
 {
     private Thread _instanceThread;
     private MTConfiguration _config;
     private MTEventHandler _eventHandler;
-    private MTConnectionClient _client;
+    private MetaTraderClient _client;
     private Logger _logger;
 
 
-    public MTSessionController(MTConfiguration config, MTConnectionClient client, Logger logger) 
+    public MetaTraderSession(MTConfiguration config, MetaTraderClient client, Logger logger) 
         : base(client, logger)
     {
         // Initialize the config and the thread

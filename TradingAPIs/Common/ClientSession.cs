@@ -3,7 +3,7 @@ using TradingAPIs.Common.Orders;
 
 namespace TradingAPIs.Common;
 
-public abstract class TradingSessionController
+public abstract class ClientSession
 {
     private readonly Thread _instanceThread;
     private readonly Logger _logger;
@@ -11,7 +11,7 @@ public abstract class TradingSessionController
 
     public bool IsRunning { get; private set; }
 
-    internal TradingSessionController(IConnectionClient connectionClient, Logger logger)
+    internal ClientSession(IConnectionClient connectionClient, Logger logger)
     {
         // Initialize the config and the thread
         // _config = config;

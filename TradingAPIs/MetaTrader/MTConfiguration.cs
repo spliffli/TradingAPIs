@@ -54,23 +54,33 @@ public class MTConfiguration : ISessionConfiguration
         else if (configFileFromPath.Lines.Count == 0)
             throw new Exception("The configuration file is empty");
 
+
         // Extract section names from the configFileSections into a list for easier processing.
         var configFileSections = configFileFromPath.Sections.Select(section => section.Content).ToList();
         // Define a list of required configuration sections that the file must contain.
-        var requiredConfigSections = new List<string> { "[MetaData]", "[DataSubscriptions]", "[Symbols]", "[Symbols.BarData]" };
+        var requiredConfigSections = new List<string> { "[MetaData]", "[Threads]", "[DataSubscriptions]", "[Symbols]", "[Symbols.BarData]" };
 
         // Check if any required sections are missing from the configuration file and throw an exception if so.
         CheckIfSectionsMissing(requiredConfigSections, configFileSections);
 
+
         // Retrieve specific values from the configuration file, such as instance name and directory path.
-        Name = configFileFromPath.GetValue("MetaData", "instanceName");
+        // [MetaData]
+        _name = configFileFromPath.GetValue("MetaData", "clientName");
         _metaTraderDirPath = configFileFromPath.GetValue("MetaData", "metaTraderDirPath");
 
-        // Retrieve boolean subscription settings
+        // [Threads]
+        _startMessageThread = configFileFromPath.GetValue("Threads", "startMessageThread", false);
+        _startOpenOrdersThread = configFileFromPath.GetValue("Threads", "startOpenOrdersThread", false);
+        _startMarketDataThread = configFileFromPath.GetValue("Threads", "startMarketDataThread", false);
+        _startBarDataThread = configFileFromPath.GetValue("Threads", "startBarDataThread", false);
+        _startHistoricDataThread = configFileFromPath.GetValue("Threads", "startHistoricDataThread", false);
+
+        // [DataSubscriptions]
         _subscribeToTickData = configFileFromPath.GetValue("DataSubscriptions", "subscribeToTickData", false);
         _subscribeToBarData = configFileFromPath.GetValue("DataSubscriptions", "subscribeToBarData", false);
 
-        // Parse symbols for tick and bar data from the configuration file.
+        // [Symbols]
         _symbolsMarketData = configFileFromPath.GetArrayValue("Symbols", "tickDataSymbols");
         // var SymbolsMarketData =configFileFromPath.JoinMultilineValue("Symbols", "SymbolsMarketData", ",");
         _symbolsBarData = ParseSymbolsBarData(configFileFromPath);

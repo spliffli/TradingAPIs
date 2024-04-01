@@ -5,7 +5,7 @@ using TradingAPIs.Common.Loggers;
 
 namespace TradingAPIs.MetaTrader;
 
-public class MTConnectionClient : IConnectionClient
+public class MetaTraderClient : IConnectionClient
 {
     private readonly MTEventHandler _eventHandler;
     private string _metaTraderDirPath;  // { get; private set; }
@@ -53,12 +53,6 @@ public class MTConnectionClient : IConnectionClient
     private readonly Thread _marketDataThread;
     private readonly Thread _barDataThread;
     private readonly Thread _historicDataThread;
-
-    private bool _startOpenOrdersThread;
-    private bool _startMessageThread = true;
-    private bool _startMarketDataThread;
-    private bool _startBarDataThread;
-    private bool _startHistoricDataThread;
     public bool SubscribeToTickData { get; set; }
     public bool SubscribeToBarData { get; set; }
     
@@ -67,7 +61,7 @@ public class MTConnectionClient : IConnectionClient
     public string[,] SymbolsBarData { get; set; }
 
     // Constructor definition with parameters for configuration
-    public MTConnectionClient(MTConfiguration config, MTEventHandler eventHandler, Logger logger, int sleepDelayMilliseconds = 5, int maxRetryCommandSeconds = 10, bool loadOrdersFromFile = true, bool verbose = true)
+    public MetaTraderClient(MTConfiguration config, MTEventHandler eventHandler, Logger logger, int sleepDelayMilliseconds = 5, int maxRetryCommandSeconds = 10, bool loadOrdersFromFile = true, bool verbose = true)
     {
         _logger = logger;
         _logger.Log("MTConnectionClient | Initializing...");
@@ -77,7 +71,8 @@ public class MTConnectionClient : IConnectionClient
         if (logger == null)
             throw new ArgumentException("logger cannot be null.");
 
-
+        if (!config.StartMessageThread && !config.StartOpenOrdersThread && !config.StartMarketDataThread && !config.StartBarDataThread && !config.StartHistoricDataThread)
+            throw new ArgumentException("At least one of the threads must be configured to start for the client to initialize.");
 
         if (config.SubscribeToTickData)
         {
@@ -139,7 +134,7 @@ public class MTConnectionClient : IConnectionClient
         // Initialize and start threads for continuously checking and processing open orders, messages, market data, etc.
         _logger.Log("MTConnectionClient | Initializing and starting threads for continuous data processing...");
 
-        if (_startMessageThread)
+        if (config.StartMessageThread)
         {
             _logger.Log("MTConnectionClient | Starting thread for checking messages.");
             _messageThread = new Thread(() => CheckMessages());
@@ -150,7 +145,7 @@ public class MTConnectionClient : IConnectionClient
             _logger.Log("MTConnectionClient | Not starting thread for checking messages. WARNING: This might stop the MetaTrader connection client from working properly.");
         }
 
-        if (_startOpenOrdersThread)
+        if (config.StartOpenOrdersThread)
         {
             _logger.Log("MTConnectionClient | Starting thread for checking open orders.");
             _openOrdersThread = new Thread(() => CheckOpenOrders());
@@ -161,7 +156,7 @@ public class MTConnectionClient : IConnectionClient
             _logger.Log("MTConnectionClient | Not starting thread for checking open orders.");
         }
 
-        if (_startMarketDataThread)
+        if (config.StartMarketDataThread)
         {
             _logger.Log("MTConnectionClient | Starting thread for checking market data.");
             _marketDataThread = new Thread(() => CheckMarketData());
@@ -172,7 +167,7 @@ public class MTConnectionClient : IConnectionClient
             _logger.Log("MTConnectionClient | Not starting thread for checking market data.");
         }
 
-        if (_startBarDataThread)
+        if (config.StartBarDataThread)
         {
             _logger.Log("MTConnectionClient | Starting thread for checking bar data.");
             _barDataThread = new Thread(() => CheckBarData());
@@ -183,7 +178,7 @@ public class MTConnectionClient : IConnectionClient
             _logger.Log("MTConnectionClient | Not starting thread for checking bar data.");
         }
 
-        if (_startHistoricDataThread)
+        if (config.StartHistoricDataThread)
         {
             _logger.Log("MTConnectionClient | Starting thread for checking historic data.");
             _historicDataThread = new Thread(() => CheckHistoricData());
@@ -216,7 +211,7 @@ public class MTConnectionClient : IConnectionClient
         _logger.Log("MTConnectionClient | Initialization complete.");
     }
 
-    public MTConnectionClient(string pathHistoricTrades)
+    public MetaTraderClient(string pathHistoricTrades)
     {
         _pathHistoricTrades = pathHistoricTrades;
     }
@@ -716,6 +711,13 @@ public class MTConnectionClient : IConnectionClient
     */
     public void SubscribeSymbolsMarketData(string[] symbols)
     {
+        if (_marketDataThread == null || !_marketDataThread.IsAlive)
+        {
+            // _marketDataThread = new Thread(() => CheckMarketData());
+            // _marketDataThread.Start();
+
+            throw new ArgumentException("Market data thread is not running so cannot subscribe to market data. In the MTConfiguration, if SubscribeToTickData = true, ensure that StartMarketDataThread = true as well to avoid this exception.");
+        }
         SendCommand("SUBSCRIBE_SYMBOLS", String.Join(",", symbols));
     }
 
@@ -736,6 +738,14 @@ public class MTConnectionClient : IConnectionClient
     */
     public void SubscribeSymbolsBarData(string[,] symbols)
     {
+        if (_barDataThread == null || !_barDataThread.IsAlive)
+        {
+            // _barDataThread = new Thread(() => CheckBarData());
+            // _barDataThread.Start();
+
+            throw new ArgumentException("Bar data thread is not running so cannot subscribe to bar data. In the MTConfiguration, if SubscribeToBarData = true, ensure that StartBarDataThread = true as well to avoid this exception.");
+        }
+
         string content = "";
         for (int i = 0; i < symbols.GetLength(0); i++)
         {
@@ -763,6 +773,14 @@ public class MTConnectionClient : IConnectionClient
     */
     public void GetHistoricData(String symbol, String timeFrame, long start, long end)
     {
+        if (_historicDataThread == null || !_historicDataThread.IsAlive)
+        {
+            // _historicDataThread = new Thread(() => CheckHistoricData());
+            // _historicDataThread.Start();
+
+            throw new ArgumentException("Historic data thread is not running so cannot get historic data. In the MTConfiguration, if StartHistoricDataThread = true, ensure that StartCheckHistoricDataThread = true as well to avoid this exception.");
+        }
+
         string content = symbol + "," + timeFrame + "," + start + "," + end;
         SendCommand("GET_HISTORIC_DATA", content);
     }
