@@ -74,6 +74,12 @@ public class MetaTraderClient : IConnectionClient
         if (!config.StartMessageThread && !config.StartOpenOrdersThread && !config.StartMarketDataThread && !config.StartBarDataThread && !config.StartHistoricDataThread)
             throw new ArgumentException("At least one of the threads must be configured to start for the client to initialize.");
 
+        if (config.SubscribeToTickData && !config.StartMarketDataThread)
+            throw new ArgumentException("If SubscribeToTickData is true, StartMarketDataThread must also be true.");
+
+        if (config.SubscribeToBarData && !config.StartBarDataThread)
+            throw new ArgumentException("If SubscribeToBarData is true, StartBarDataThread must also be true.");
+
         if (config.SubscribeToTickData)
         {
             SubscribeToTickData = true;
