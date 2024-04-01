@@ -5,14 +5,35 @@ namespace TradingAPIs.MetaTrader;
 
 public class MTConfiguration : ISessionConfiguration
 {
+    private string _name;
+    private string _metaTraderDirPath;
+
+    private bool _startMessageThread;
+    private bool _startOpenOrdersThread;
+    private bool _startMarketDataThread;
+    private bool _startBarDataThread;
+    private bool _startHistoricDataThread;
+
+    private bool _subscribeToTickData;
+    private bool _subscribeToBarData;
+    private string[] _symbolsMarketData;
+    private string[,] _symbolsBarData;
+
     // The name of the configuration
-    public string Name { get; set; }
+    public string Name { get { return _name; } set { _name = value; } }
     // The directory path of the MetaTrader instance
-    public string MetaTraderDirPath { get; }
-    public bool SubscribeToTickData { get; set; }
-    public bool SubscribeToBarData { get; set; }
-    public string[] SymbolsTickData { get; set; }
-    public string[,] SymbolsBarData { get; set; }
+    public string MetaTraderDirPath { get { return _metaTraderDirPath; } }
+
+    public bool StartMessageThread { get { return _startMessageThread; } }
+    public bool StartOpenOrdersThread { get { return _startOpenOrdersThread; } }
+    public bool StartMarketDataThread { get { return _startMarketDataThread; } }
+    public bool StartBarDataThread { get { return _startBarDataThread; } }
+    public bool StartHistoricDataThread { get { return _startHistoricDataThread; } }
+
+    public bool SubscribeToTickData { get { return _subscribeToTickData; } }
+    public bool SubscribeToBarData { get { return _subscribeToBarData; } }
+    public string[] SymbolsMarketData { get { return _symbolsMarketData; } }
+    public string[,] SymbolsBarData { get { return _symbolsBarData; } }
 
 
     // Constructor for the MT4Configuration class that initializes configuration using a specified file path.
@@ -43,16 +64,16 @@ public class MTConfiguration : ISessionConfiguration
 
         // Retrieve specific values from the configuration file, such as instance name and directory path.
         Name = configFileFromPath.GetValue("MetaData", "instanceName");
-        MetaTraderDirPath = configFileFromPath.GetValue("MetaData", "metaTraderDirPath");
+        _metaTraderDirPath = configFileFromPath.GetValue("MetaData", "metaTraderDirPath");
 
         // Retrieve boolean subscription settings
-        SubscribeToTickData = configFileFromPath.GetValue("DataSubscriptions", "subscribeToTickData", false);
-        SubscribeToBarData = configFileFromPath.GetValue("DataSubscriptions", "subscribeToBarData", false);
+        _subscribeToTickData = configFileFromPath.GetValue("DataSubscriptions", "subscribeToTickData", false);
+        _subscribeToBarData = configFileFromPath.GetValue("DataSubscriptions", "subscribeToBarData", false);
 
         // Parse symbols for tick and bar data from the configuration file.
-        SymbolsTickData = configFileFromPath.GetArrayValue("Symbols", "tickDataSymbols");
-        // var symbolsTickData =configFileFromPath.JoinMultilineValue("Symbols", "symbolsTickData", ",");
-        SymbolsBarData = ParseSymbolsBarData(configFileFromPath);
+        _symbolsMarketData = configFileFromPath.GetArrayValue("Symbols", "tickDataSymbols");
+        // var SymbolsMarketData =configFileFromPath.JoinMultilineValue("Symbols", "SymbolsMarketData", ",");
+        _symbolsBarData = ParseSymbolsBarData(configFileFromPath);
     }
 
 
@@ -125,14 +146,14 @@ public class MTConfiguration : ISessionConfiguration
         return ret;
     }
 
-    public MTConfiguration(string metaTraderDirPath, string name, bool subscribeToTickData = true, bool subscribeToBarData = false, string[] symbolsTickData = null, string[,] symbolsBarData = null)
+    public MTConfiguration(string metaTraderDirPath, string name, bool subscribeToTickData = true, bool subscribeToBarData = false, string[] SymbolsMarketData = null, string[,] symbolsBarData = null)
     {
-        Name = name;
-        MetaTraderDirPath = metaTraderDirPath;
-        SubscribeToTickData = subscribeToTickData;
-        SubscribeToBarData = subscribeToBarData;
-        SymbolsTickData = symbolsTickData;
-        SymbolsBarData = symbolsBarData;
+        _name = name;
+        _metaTraderDirPath = metaTraderDirPath;
+        _subscribeToTickData = subscribeToTickData;
+        _subscribeToBarData = subscribeToBarData;
+        _symbolsMarketData = SymbolsMarketData;
+        _symbolsBarData = symbolsBarData;
         // Initialize other properties here
     }
 }

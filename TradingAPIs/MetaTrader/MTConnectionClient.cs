@@ -54,11 +54,16 @@ public class MTConnectionClient : IConnectionClient
     private readonly Thread _barDataThread;
     private readonly Thread _historicDataThread;
 
-    public bool StartCheckOpenOrdersThread { get; set; }
+    private bool _startOpenOrdersThread;
+    private bool _startMessageThread = true;
+    private bool _startMarketDataThread;
+    private bool _startBarDataThread;
+    private bool _startHistoricDataThread;
     public bool SubscribeToTickData { get; set; }
     public bool SubscribeToBarData { get; set; }
+    
     public bool StartCheckHistoricDataThread { get; set; }
-    public string[] SymbolsTickData { get; set; }
+    public string[] SymbolsMarketData { get; set; }
     public string[,] SymbolsBarData { get; set; }
 
     // Constructor definition with parameters for configuration
@@ -72,14 +77,16 @@ public class MTConnectionClient : IConnectionClient
         if (logger == null)
             throw new ArgumentException("logger cannot be null.");
 
+
+
         if (config.SubscribeToTickData)
         {
             SubscribeToTickData = true;
 
-            if (config.SymbolsTickData == null || config.SymbolsTickData.Length == 0)
-                throw new ArgumentException("SymbolsTickData cannot be null or empty if SubscribeToTickData is true.");
+            if (config.SymbolsMarketData == null || config.SymbolsMarketData.Length == 0)
+                throw new ArgumentException("SymbolsMarketData cannot be null or empty if SubscribeToTickData is true.");
 
-            SymbolsTickData = config.SymbolsTickData;
+            SymbolsMarketData = config.SymbolsMarketData;
         }
 
         if (config.SubscribeToBarData)
@@ -132,11 +139,18 @@ public class MTConnectionClient : IConnectionClient
         // Initialize and start threads for continuously checking and processing open orders, messages, market data, etc.
         _logger.Log("MTConnectionClient | Initializing and starting threads for continuous data processing...");
 
-        _logger.Log("MTConnectionClient | Starting thread for checking messages.");
-        _messageThread = new Thread(() => CheckMessages());
-        _messageThread.Start();
+        if (_startMessageThread)
+        {
+            _logger.Log("MTConnectionClient | Starting thread for checking messages.");
+            _messageThread = new Thread(() => CheckMessages());
+            _messageThread.Start();
+        }
+        else
+        {
+            _logger.Log("MTConnectionClient | Not starting thread for checking messages. WARNING: This might stop the MetaTrader connection client from working properly.");
+        }
 
-        if (StartCheckOpenOrdersThread)
+        if (_startOpenOrdersThread)
         {
             _logger.Log("MTConnectionClient | Starting thread for checking open orders.");
             _openOrdersThread = new Thread(() => CheckOpenOrders());
@@ -147,7 +161,7 @@ public class MTConnectionClient : IConnectionClient
             _logger.Log("MTConnectionClient | Not starting thread for checking open orders.");
         }
 
-        if (SubscribeToTickData)
+        if (_startMarketDataThread)
         {
             _logger.Log("MTConnectionClient | Starting thread for checking market data.");
             _marketDataThread = new Thread(() => CheckMarketData());
@@ -158,7 +172,7 @@ public class MTConnectionClient : IConnectionClient
             _logger.Log("MTConnectionClient | Not starting thread for checking market data.");
         }
 
-        if (SubscribeToBarData)
+        if (_startBarDataThread)
         {
             _logger.Log("MTConnectionClient | Starting thread for checking bar data.");
             _barDataThread = new Thread(() => CheckBarData());
@@ -169,7 +183,7 @@ public class MTConnectionClient : IConnectionClient
             _logger.Log("MTConnectionClient | Not starting thread for checking bar data.");
         }
 
-        if (StartCheckHistoricDataThread)
+        if (_startHistoricDataThread)
         {
             _logger.Log("MTConnectionClient | Starting thread for checking historic data.");
             _historicDataThread = new Thread(() => CheckHistoricData());
@@ -211,11 +225,17 @@ public class MTConnectionClient : IConnectionClient
     */
     public void Start()
     {
+        _logger.Log("MTConnectionClient.Start | Starting the client.");
         _start = true;
 
-        if (!SubscribeToTickData && !SubscribeToBarData)
-            throw new ArgumentException(
-                "At least one of SubscribeSymbolsTickData or SubscribeSymbolsBarData must be true to start the MT4EventHandler.");
+        _logger.Log("MTConnectionClient.Start | Thread States:");
+        foreach (var x in GetThreadStates())
+        {
+            _logger.Log("Thread: " + x.Key + " | State: " + x.Value);
+        }
+        // if (!SubscribeToTickData && !SubscribeToBarData)
+        //     throw new ArgumentException(
+        //         "At least one of SubscribeSymbolsMarketData or SubscribeSymbolsBarData must be true to start the MT4EventHandler.");
 
         // Logic to Start handling events from the MT4 instance
         // account information is stored in client.AccountInfo.
@@ -227,9 +247,9 @@ public class MTConnectionClient : IConnectionClient
         if (SubscribeToTickData)
         {
             // subscribe to tick data:
-            // string[] symbolsTickData = { "EURUSD", "GBPUSD" };
+            // string[] SymbolsMarketData = { "EURUSD", "GBPUSD" };
             Console.WriteLine("Subscribing to tick data.");
-            SubscribeSymbolsTickData(SymbolsTickData);
+            SubscribeSymbolsMarketData(SymbolsMarketData);
         }
 
         if (SubscribeToBarData)
@@ -239,6 +259,37 @@ public class MTConnectionClient : IConnectionClient
             // string[,] symbolsBarData = new string[,] { { "EURUSD", "M1" }, { "AUDCAD", "M5" }, { "GBPCAD", "M15" } };
             SubscribeSymbolsBarData(SymbolsBarData);
         }
+    }
+
+
+    private Dictionary<string, ThreadState> GetThreadStates()
+    {
+        var ThreadStates = new Dictionary<string, ThreadState>();
+
+        ThreadStates.Add("messageThread", GetThreadState(_messageThread));
+        ThreadStates.Add("openOrdersThread", GetThreadState(_openOrdersThread));
+        ThreadStates.Add("marketDataThread", GetThreadState(_marketDataThread));
+        ThreadStates.Add("barDataThread", GetThreadState(_barDataThread));
+        ThreadStates.Add("historicDataThread", GetThreadState(_historicDataThread));
+
+        return ThreadStates;
+    }
+
+    private static ThreadState GetThreadState(Thread thread)
+    {
+        if (thread == null)
+            return ThreadState.Unstarted;
+        return thread.ThreadState;
+    }
+
+    private static bool IsThreadRunning(Thread thread)
+    {
+        if (thread == null || !thread.IsAlive)
+             return false;
+
+        if (thread.ThreadState == ThreadState.Running)
+            return true;
+        return false;
     }
 
 
@@ -663,7 +714,7 @@ public class MTConnectionClient : IConnectionClient
         On receiving the data the eventHandler.OnTick() 
         function will be triggered. 
     */
-    public void SubscribeSymbolsTickData(string[] symbols)
+    public void SubscribeSymbolsMarketData(string[] symbols)
     {
         SendCommand("SUBSCRIBE_SYMBOLS", String.Join(",", symbols));
     }
