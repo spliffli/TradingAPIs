@@ -4,9 +4,9 @@ using TradingAPIs.Common;
 using TradingAPIs.Common.Loggers;
 
 namespace TradingAPIs.MetaTrader;
-
 public class MetaTraderClient : IConnectionClient
 {
+    private MTConfiguration _config;
     private readonly MTEventHandler _eventHandler;
     private string _metaTraderDirPath;  // { get; private set; }
     private readonly Logger _logger;
@@ -48,11 +48,14 @@ public class MetaTraderClient : IConnectionClient
     public bool Active = true;
     private bool _start = false;
 
-    private readonly Thread _openOrdersThread;
     private readonly Thread _messageThread;
+    private readonly Thread _openOrdersThread;
     private readonly Thread _marketDataThread;
     private readonly Thread _barDataThread;
     private readonly Thread _historicDataThread;
+
+    private readonly ThreadStates _threadStates;
+
     public bool SubscribeToTickData { get; set; }
     public bool SubscribeToBarData { get; set; }
     
@@ -71,38 +74,40 @@ public class MetaTraderClient : IConnectionClient
         if (logger == null)
             throw new ArgumentException("logger cannot be null.");
 
-        if (!config.StartMessageThread && !config.StartOpenOrdersThread && !config.StartMarketDataThread && !config.StartBarDataThread && !config.StartHistoricDataThread)
+        _config = config;
+
+        if (!_config.StartMessageThread && !_config.StartOpenOrdersThread && !_config.StartMarketDataThread && !_config.StartBarDataThread && !_config.StartHistoricDataThread)
             throw new ArgumentException("At least one of the threads must be configured to start for the client to initialize.");
 
-        if (config.SubscribeToTickData && !config.StartMarketDataThread)
+        if (_config.SubscribeToTickData && !_config.StartMarketDataThread)
             throw new ArgumentException("If SubscribeToTickData is true, StartMarketDataThread must also be true.");
 
-        if (config.SubscribeToBarData && !config.StartBarDataThread)
+        if (_config.SubscribeToBarData && !_config.StartBarDataThread)
             throw new ArgumentException("If SubscribeToBarData is true, StartBarDataThread must also be true.");
 
-        if (config.SubscribeToTickData)
+        if (_config.SubscribeToTickData)
         {
             SubscribeToTickData = true;
 
-            if (config.SymbolsMarketData == null || config.SymbolsMarketData.Length == 0)
+            if (_config.SymbolsMarketData == null || _config.SymbolsMarketData.Length == 0)
                 throw new ArgumentException("SymbolsMarketData cannot be null or empty if SubscribeToTickData is true.");
 
-            SymbolsMarketData = config.SymbolsMarketData;
+            SymbolsMarketData = _config.SymbolsMarketData;
         }
 
-        if (config.SubscribeToBarData)
+        if (_config.SubscribeToBarData)
         {
             SubscribeToBarData = true;
 
-            if (config.SymbolsBarData == null || config.SymbolsBarData.Length == 0)
+            if (_config.SymbolsBarData == null || _config.SymbolsBarData.Length == 0)
                 throw new ArgumentException("SymbolsBarData cannot be null or empty if SubscribeToBarData is true.");
 
-            SymbolsBarData = config.SymbolsBarData;
+            SymbolsBarData = _config.SymbolsBarData;
         }
 
         // Assign the constructor parameters to the class's fields
         _eventHandler = eventHandler;                          // Event handler for managing MT4 events
-        _metaTraderDirPath = config.MetaTraderDirPath;         // Directory path of the MetaTrader installation
+        _metaTraderDirPath = _config.MetaTraderDirPath;        // Directory path of the MetaTrader installation
         _sleepDelayMilliseconds = sleepDelayMilliseconds;      // Sleep delay in milliseconds between checks
         _maxRetryCommandSeconds = maxRetryCommandSeconds;      // Maximum time in seconds to retry a command
         _loadOrdersFromFile = loadOrdersFromFile;              // Flag to load orders from a file
@@ -116,7 +121,8 @@ public class MetaTraderClient : IConnectionClient
         }
 
         // Initialize the paths for various types of data files within the MetaTrader directory
-        _logger.Log("MTConnectionClient | Initializing paths for data files within MetaTrader directory.");
+        if (_verbose)
+            _logger.Log("MTConnectionClient | Initializing paths for data files within MetaTrader directory.");
         _pathOrders = Path.Join(_metaTraderDirPath, "DWX", "DWX_Orders.txt");
         _pathMessages = Path.Join(_metaTraderDirPath, "DWX", "DWX_Messages.txt");
         _pathMarketData = Path.Join(_metaTraderDirPath, "DWX", "DWX_Market_Data.txt");
@@ -126,7 +132,8 @@ public class MetaTraderClient : IConnectionClient
         _pathOrdersStored = Path.Join(_metaTraderDirPath, "DWX", "DWX_Orders_Stored.txt");
         _pathMessagesStored = Path.Join(_metaTraderDirPath, "DWX", "DWX_Messages_Stored.txt");
         _pathCommandsPrefix = Path.Join(_metaTraderDirPath, "DWX", "DWX_Commands_");
-        _logger.Log("MTConnectionClient | Paths initialized.");
+        if (_verbose)
+            _logger.Log("MTConnectionClient | Paths initialized.");
 
         _logger.Log("MTConnectionClient | Loading messages from file.");
         LoadMessages(); // Load the initial messages from the file
@@ -137,13 +144,21 @@ public class MetaTraderClient : IConnectionClient
             LoadOrders(); // Load the initial orders from the file, if specified
         }
 
-        // Initialize and start threads for continuously checking and processing open orders, messages, market data, etc.
-        _logger.Log("MTConnectionClient | Initializing and starting threads for continuous data processing...");
+        // Initialize the threads for checking messages, open orders, market data, bar data, and historic data
+        _messageThread = new Thread(() => CheckMessages());
+        _openOrdersThread = new Thread(() => CheckOpenOrders());
+        _marketDataThread = new Thread(() => CheckMarketData());
+        _barDataThread = new Thread(() => CheckBarData());
+        _historicDataThread = new Thread(() => CheckHistoricData());
 
-        if (config.StartMessageThread)
+        _threadStates = new ThreadStates(_messageThread, _openOrdersThread, _marketDataThread, _barDataThread, _historicDataThread);
+
+        // Start the threads which are configured to start
+        _logger.Log("MTConnectionClient | Starting threads for continuous data processing...");
+
+        if (_config.StartMessageThread)
         {
             _logger.Log("MTConnectionClient | Starting thread for checking messages.");
-            _messageThread = new Thread(() => CheckMessages());
             _messageThread.Start();
         }
         else
@@ -151,10 +166,9 @@ public class MetaTraderClient : IConnectionClient
             _logger.Log("MTConnectionClient | Not starting thread for checking messages. WARNING: This might stop the MetaTrader connection client from working properly.");
         }
 
-        if (config.StartOpenOrdersThread)
+        if (_config.StartOpenOrdersThread)
         {
             _logger.Log("MTConnectionClient | Starting thread for checking open orders.");
-            _openOrdersThread = new Thread(() => CheckOpenOrders());
             _openOrdersThread.Start();
         }
         else
@@ -162,10 +176,9 @@ public class MetaTraderClient : IConnectionClient
             _logger.Log("MTConnectionClient | Not starting thread for checking open orders.");
         }
 
-        if (config.StartMarketDataThread)
+        if (_config.StartMarketDataThread)
         {
             _logger.Log("MTConnectionClient | Starting thread for checking market data.");
-            _marketDataThread = new Thread(() => CheckMarketData());
             _marketDataThread.Start();
         }
         else
@@ -173,10 +186,9 @@ public class MetaTraderClient : IConnectionClient
             _logger.Log("MTConnectionClient | Not starting thread for checking market data.");
         }
 
-        if (config.StartBarDataThread)
+        if (_config.StartBarDataThread)
         {
             _logger.Log("MTConnectionClient | Starting thread for checking bar data.");
-            _barDataThread = new Thread(() => CheckBarData());
             _barDataThread.Start();
         }
         else
@@ -184,10 +196,9 @@ public class MetaTraderClient : IConnectionClient
             _logger.Log("MTConnectionClient | Not starting thread for checking bar data.");
         }
 
-        if (config.StartHistoricDataThread)
+        if (_config.StartHistoricDataThread)
         {
             _logger.Log("MTConnectionClient | Starting thread for checking historic data.");
-            _historicDataThread = new Thread(() => CheckHistoricData());
             _historicDataThread.Start();
         }
         else
@@ -230,10 +241,13 @@ public class MetaTraderClient : IConnectionClient
         _start = true;
 
         _logger.Log("MTConnectionClient.Start | Thread States:");
-        foreach (var x in GetThreadStates())
-        {
-            _logger.Log("Thread: " + x.Key + " | State: " + x.Value);
-        }
+        // foreach (var x in GetThreadStates())
+        // {
+        //     _logger.Log("Thread: " + x.Key + " | State: " + x.Value);
+        // }
+
+        Console.WriteLine(_threadStates.ToString());
+
         // if (!SubscribeToTickData && !SubscribeToBarData)
         //     throw new ArgumentException(
         //         "At least one of SubscribeSymbolsMarketData or SubscribeSymbolsBarData must be true to start the MT4EventHandler.");
@@ -706,7 +720,7 @@ public class MetaTraderClient : IConnectionClient
     /*Sends a SUBSCRIBE_SYMBOLS command to subscribe to market (tick) data.
 
     Args:
-        symbols (String[]): List of symbols to subscribe to.
+        symbols (string[]): List of symbols to subscribe to.
 
     Returns:
         null
