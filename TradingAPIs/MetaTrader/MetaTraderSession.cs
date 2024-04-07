@@ -18,16 +18,9 @@ public class MetaTraderSession : ClientSession
     {
         // Initialize the config and the thread
         _config = config;
-        _instanceThread = new Thread(new ThreadStart(Run));
+        // _instanceThread = new Thread(new ThreadStart(Run));
         _client = client;
         _logger = logger;
-    }
-
-    public override void Run()
-    {
-        // Start the connection client
-        // _client = new MTConnectionClient(_eventHandler, _config.MetaTraderDirPath, _logger);
-        _client.Start();
     }
 
     public override void SubscribeToTickData()

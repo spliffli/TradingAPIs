@@ -8,6 +8,11 @@ public class MTConfiguration : ISessionConfiguration
     private string _name;
     private string _metaTraderDirPath;
 
+    private int _sleepDelayMilliseconds = 5;
+    private int _maxRetryCommandSeconds = 10;
+    private bool _loadOrdersFromFile = true;
+    private bool _verbose = true;
+
     private bool _startMessageThread;
     private bool _startOpenOrdersThread;
     private bool _startMarketDataThread;
@@ -19,10 +24,13 @@ public class MTConfiguration : ISessionConfiguration
     private string[] _symbolsMarketData;
     private string[,] _symbolsBarData;
 
-    // The name of the configuration
     public string Name { get { return _name; } set { _name = value; } }
-    // The directory path of the MetaTrader instance
     public string MetaTraderDirPath { get { return _metaTraderDirPath; } }
+
+    public int SleepDelayMilliseconds { get { return _sleepDelayMilliseconds; } }
+    public int MaxRetryCommandSeconds { get { return _maxRetryCommandSeconds; } }
+    public bool LoadOrdersFromFile { get { return _loadOrdersFromFile; } }
+    public bool Verbose { get { return _verbose; } }
 
     public bool StartMessageThread { get { return _startMessageThread; } }
     public bool StartOpenOrdersThread { get { return _startOpenOrdersThread; } }
@@ -58,7 +66,7 @@ public class MTConfiguration : ISessionConfiguration
         // Extract section names from the configFileSections into a list for easier processing.
         var configFileSections = configFileFromPath.Sections.Select(section => section.Content).ToList();
         // Define a list of required configuration sections that the file must contain.
-        var requiredConfigSections = new List<string> { "[MetaData]", "[Threads]", "[DataSubscriptions]", "[Symbols]", "[Symbols.BarData]" };
+        var requiredConfigSections = new List<string> { "[MetaData]", "[Init]", "[Threads]", "[DataSubscriptions]", "[Symbols]", "[Symbols.BarData]" };
 
         // Check if any required sections are missing from the configuration file and throw an exception if so.
         CheckIfSectionsMissing(requiredConfigSections, configFileSections);
@@ -68,6 +76,12 @@ public class MTConfiguration : ISessionConfiguration
         // [MetaData]
         _name = configFileFromPath.GetValue("MetaData", "clientName");
         _metaTraderDirPath = configFileFromPath.GetValue("MetaData", "metaTraderDirPath");
+
+        // [Init]
+        _sleepDelayMilliseconds = configFileFromPath.GetValue("Init", "sleepDelayMilliseconds", 5);
+        _maxRetryCommandSeconds = configFileFromPath.GetValue("Init", "maxRetryCommandSeconds", 10);
+        _loadOrdersFromFile = configFileFromPath.GetValue("Init", "loadOrdersFromFile", true);
+        _verbose = configFileFromPath.GetValue("Init", "verbose", true);
 
         // [Threads]
         _startMessageThread = configFileFromPath.GetValue("Threads", "startMessageThread", false);

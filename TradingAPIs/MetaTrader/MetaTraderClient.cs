@@ -7,7 +7,7 @@ namespace TradingAPIs.MetaTrader;
 public class MetaTraderClient : IConnectionClient
 {
     private MTConfiguration _config;
-    private readonly MTEventHandler _eventHandler;
+    private readonly IMTEventHandler _eventHandler;
     private string _metaTraderDirPath;  // { get; private set; }
     private readonly Logger _logger;
     private readonly int _sleepDelayMilliseconds;
@@ -63,16 +63,31 @@ public class MetaTraderClient : IConnectionClient
     public string[] SymbolsMarketData { get; set; }
     public string[,] SymbolsBarData { get; set; }
 
+    // public MetaTraderClient(MTConfiguration config)
+    // {
+    //     Console.WriteLine("MTConnectionClient | Initializing from MTConfiguration");
+    // 
+    //     if (config == null)
+    //         throw new ArgumentException("config cannot be null.");
+    //
+    //     _config = config;
+    // }
+
     // Constructor definition with parameters for configuration
-    public MetaTraderClient(MTConfiguration config, MTEventHandler eventHandler, Logger logger, int sleepDelayMilliseconds = 5, int maxRetryCommandSeconds = 10, bool loadOrdersFromFile = true, bool verbose = true)
+    public MetaTraderClient(MTConfiguration config, MTEventHandler eventHandler, Logger? logger = null)
     {
-        _logger = logger;
+        if (logger == null)
+        {
+            _logger = new ConsoleLogger();
+            _logger.Log("MTConnectionClient | No logger was passed so defaulting to ConsoleLogger");
+        }
+        else
+            _logger = logger;
+
         _logger.Log("MTConnectionClient | Initializing...");
 
         if (config == null)
             throw new ArgumentException("config cannot be null.");
-        if (logger == null)
-            throw new ArgumentException("logger cannot be null.");
 
         _config = config;
 
@@ -106,12 +121,12 @@ public class MetaTraderClient : IConnectionClient
         }
 
         // Assign the constructor parameters to the class's fields
-        _eventHandler = eventHandler;                          // Event handler for managing MT4 events
-        _metaTraderDirPath = _config.MetaTraderDirPath;        // Directory path of the MetaTrader installation
-        _sleepDelayMilliseconds = sleepDelayMilliseconds;      // Sleep delay in milliseconds between checks
-        _maxRetryCommandSeconds = maxRetryCommandSeconds;      // Maximum time in seconds to retry a command
-        _loadOrdersFromFile = loadOrdersFromFile;              // Flag to load orders from a file
-        _verbose = verbose;                                    // Verbose mode flag
+        _eventHandler = eventHandler;                               // Event handler for managing MT4 events
+        _metaTraderDirPath = _config.MetaTraderDirPath;             // Directory path of the MetaTrader installation
+        _sleepDelayMilliseconds = _config.SleepDelayMilliseconds;   // Sleep delay in milliseconds between checks
+        _maxRetryCommandSeconds = _config.MaxRetryCommandSeconds;   // Maximum time in seconds to retry a command
+        _loadOrdersFromFile = _config.LoadOrdersFromFile;           // Flag to load orders from a file
+        _verbose = _config.Verbose;                                 // Verbose mode flag
 
         // Check if the MetaTrader directory path exists; if not, exit the program
         if (!Directory.Exists(_metaTraderDirPath))
@@ -138,7 +153,7 @@ public class MetaTraderClient : IConnectionClient
         _logger.Log("MTConnectionClient | Loading messages from file.");
         LoadMessages(); // Load the initial messages from the file
 
-        if (loadOrdersFromFile)
+        if (_config.LoadOrdersFromFile)
         {
             _logger.Log("MTConnectionClient | Loading orders from file, as specified.");
             LoadOrders(); // Load the initial orders from the file, if specified
@@ -851,20 +866,22 @@ public class MetaTraderClient : IConnectionClient
     }
 
 
+
     /*Sends a MODIFY_ORDER command to modify an order.
 
-    Args:
-        ticket (int): Ticket of the order that should be modified.
-        price (double): Price of the (pending) order. Non-zero only 
-            works for pending orders. 
-        stop_loss (double): New stop loss price.
-        take_profit (double): New take profit price. 
-        expriation (long): New expiration time given as timestamp in seconds. 
-            Can be zero if the order should not have an expiration time. 
-    */
-    public void ModifyOrder(int ticket, double price, double stopLoss, double takeProfit, long expiration)
+		Args:
+			ticket (int): Ticket of the order that should be modified.
+			lots (double): Volume in lots
+			price (double): Price of the (pending) order. Non-zero only 
+				works for pending orders. 
+			stop_loss (double): New stop loss price.
+			take_profit (double): New take profit price. 
+			expriation (long): New expiration time given as timestamp in seconds. 
+				Can be zero if the order should not have an expiration time. 
+		*/
+    public void ModifyOrder(int ticket, double lots, double price, double stopLoss, double takeProfit, long expiration)
     {
-        string content = ticket + "," + MTHelpers.Format(price) + "," + MTHelpers.Format(stopLoss) + "," + MTHelpers.Format(takeProfit) + "," + expiration;
+        string content = ticket + "," + MTHelpers.Format(lots) + "," + MTHelpers.Format(price) + "," + MTHelpers.Format(stopLoss) + "," + MTHelpers.Format(takeProfit) + "," + expiration;
         SendCommand("MODIFY_ORDER", content);
     }
 
