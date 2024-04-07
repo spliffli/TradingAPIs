@@ -9,6 +9,7 @@ public class MetaTraderClient : IConnectionClient
     private MTConfiguration _config;
     private readonly IMTEventHandler _eventHandler;
     private string _metaTraderDirPath;  // { get; private set; }
+    private bool _developMql = false;
     private readonly Logger _logger;
     private readonly int _sleepDelayMilliseconds;
     private readonly int _maxRetryCommandSeconds;
@@ -56,10 +57,10 @@ public class MetaTraderClient : IConnectionClient
 
     private readonly ThreadStates _threadStates;
 
-    public bool SubscribeToTickData { get; set; }
-    public bool SubscribeToBarData { get; set; }
+    public bool SubscribesToTickData { get; set; }
+    public bool SubscribesToBarData { get; set; }
     
-    public bool StartCheckHistoricDataThread { get; set; }
+    // public bool StartCheckHistoricDataThread { get; set; }
     public string[] SymbolsMarketData { get; set; }
     public string[,] SymbolsBarData { get; set; }
 
@@ -102,7 +103,7 @@ public class MetaTraderClient : IConnectionClient
 
         if (_config.SubscribeToTickData)
         {
-            SubscribeToTickData = true;
+            SubscribesToTickData = true;
 
             if (_config.SymbolsMarketData == null || _config.SymbolsMarketData.Length == 0)
                 throw new ArgumentException("SymbolsMarketData cannot be null or empty if SubscribeToTickData is true.");
@@ -112,7 +113,7 @@ public class MetaTraderClient : IConnectionClient
 
         if (_config.SubscribeToBarData)
         {
-            SubscribeToBarData = true;
+            SubscribesToBarData = true;
 
             if (_config.SymbolsBarData == null || _config.SymbolsBarData.Length == 0)
                 throw new ArgumentException("SymbolsBarData cannot be null or empty if SubscribeToBarData is true.");
@@ -274,7 +275,7 @@ public class MetaTraderClient : IConnectionClient
 
         Console.WriteLine("\nAccount info:\n" + AccountInfo + "\n");
 
-        if (SubscribeToTickData)
+        if (SubscribesToTickData)
         {
             // subscribe to tick data:
             // string[] SymbolsMarketData = { "EURUSD", "GBPUSD" };
@@ -282,7 +283,7 @@ public class MetaTraderClient : IConnectionClient
             SubscribeSymbolsMarketData(SymbolsMarketData);
         }
 
-        if (SubscribeToBarData)
+        if (SubscribesToBarData)
         {
             // subscribe to bar data:
             Console.WriteLine("Subscribing to bar data.");
@@ -944,7 +945,11 @@ public class MetaTraderClient : IConnectionClient
     {
         _commandId = 0;
 
-        SendCommand("RESET_COMMAND_IDS", "");
+        if (!_developMql)
+            SendCommand("RESET_COMMAND_IDS", "");
+        else
+            SendCommand("RESET_COMMAND_IDS_DEVELOP", ""); // TODO: Update this command to take the correct arguments.
+                                                          // It will throw an exception currently since this command won't be recognized on the mql side.
 
         // sleep to make sure it is read before other commands.
         Thread.Sleep(500);

@@ -11,9 +11,13 @@ public class MTEventHandler : IMTEventHandler, IEventHandler
     private bool _verbose;
 
     // Constructor
-    public MTEventHandler(Logger logger, bool verbose=true)
+    public MTEventHandler(Logger? logger = null, bool verbose=true)
     {
-        _logger = logger;
+        if (logger == null)
+            _logger = new ConsoleLogger();
+        else
+            _logger = logger;
+
         _verbose = verbose;
     }
 

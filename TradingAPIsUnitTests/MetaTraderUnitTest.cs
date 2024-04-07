@@ -7,20 +7,42 @@ using Newtonsoft.Json.Linq;
 using TradingAPIs;
 using TradingAPIs.MetaTrader;
 using static TradingAPIs.MetaTrader.MTHelpers;
+using System.IO;
+
+/*
+
+Tests to check that the MetaTraderClient is working correctly.  This file is a modified version of the original Unit Test file from the DWXConnect C# project.
+
+Please don't run this on your live account. It will open and close positions!
+
+The MT4/5 server must be initialized with MaximumOrders>=5 and MaximumLotSize>=0.02. 
+
+
+compile and run tests:
+dotnet build
+dotnet test
+
+Or in Visual Studio: 
+Test -> Run All Tests
+
+*/
 
 namespace TradingAPIsUnitTests
 {
     [TestClass]
     public class MetaTraderUnitTest
     {
-        string MetaTraderDirPath = "C:/Users/Administrator/AppData/Roaming/MetaQuotes/Terminal/3B534B10135CFEDF8CD1AAB8BD994B13/MQL4/Files/";
-        string symbol = "EURUSD";
-        int magicNumber = 0;
-        int numOpenOrders = 5;
-        double lots = 0.02;  // 0.02 so that we can also test partial closing. 
-        double priceOffset = 0.01;
-        string[] types = { "buy", "sell", "buylimit", "selllimit", "buystop", "sellstop" };
-        MetaTraderClient dwx;
+        private string _metaTraderDirPath = "C:/Users/Administrator/AppData/Roaming/MetaQuotes/Terminal/3B534B10135CFEDF8CD1AAB8BD994B13/MQL4/Files/";
+        private string _symbol = "EURUSD";
+        private int _magicNumber = 0;
+        private int _numOpenOrders = 5;
+        private double _lots = 0.02;  // 0.02 so that we can also test partial closing. 
+        private double _priceOffset = 0.01;
+        private string[] _types = { "buy", "sell", "buylimit", "selllimit", "buystop", "sellstop" };
+
+        private MTConfiguration _testConfig = new MTConfiguration(Directory.GetCurrentDirectory() + "\\mt4TestConfig.ini");
+        private MetaTraderClient _testClient;
+
 
 
         /*Initializes DWX_Client and closes all open orders. 
@@ -28,7 +50,7 @@ namespace TradingAPIsUnitTests
         [TestInitialize]
         public void TestInitialize()
         {
-            dwx = new MetaTraderClient()  // new MetaTraderClient(null, MetaTraderDirPath, 5, 10, false, false);
+            _testClient = new MetaTraderClient(_testConfig, new MTEventHandler());  // new MetaTraderClient(null, MetaTraderDirPath, 5, 10, false, false);
             Thread.Sleep(1000);
             // make sure there are no open orders when starting the test. 
             if (!closeAllOrders())
@@ -44,9 +66,9 @@ namespace TradingAPIsUnitTests
 		*/
         bool openMultipleOrders()
         {
-            for (int i = 0; i < numOpenOrders; i++)
+            for (int i = 0; i < _numOpenOrders; i++)
             {
-                dwx.OpenOrder(symbol, "buy", lots, 0, 0, 0, magicNumber, "", 0);
+                _testClient.OpenOrder(_symbol, "buy", _lots, 0, 0, 0, _magicNumber, "", 0);
             }
             DateTime now = DateTime.UtcNow;
             DateTime endTime = DateTime.UtcNow + new TimeSpan(0, 0, 5);
@@ -54,10 +76,10 @@ namespace TradingAPIsUnitTests
             {
                 Thread.Sleep(1000);
                 now = DateTime.UtcNow;
-                if (dwx.OpenOrders.Count == numOpenOrders)
+                if (_testClient.OpenOrders.Count == _numOpenOrders)
                     return true;
                 // in case there was a requote, try again:
-                dwx.OpenOrder(symbol, "buy", lots, 0, 0, 0, magicNumber, "", 0);
+                _testClient.OpenOrder(_symbol, "buy", _lots, 0, 0, 0, _magicNumber, "", 0);
             }
             return false;
         }
@@ -77,10 +99,10 @@ namespace TradingAPIsUnitTests
             while (now < endTime)
             {
                 // sometimes it could fail if for example there is a requote. so just try again. 
-                dwx.CloseAllOrders();
+                _testClient.CloseAllOrders();
                 Thread.Sleep(1000);
                 now = DateTime.UtcNow;
-                if (dwx.OpenOrders.Count == 0)
+                if (_testClient.OpenOrders.Count == 0)
                     return true;
             }
             return false;
@@ -93,8 +115,8 @@ namespace TradingAPIsUnitTests
         {
 
             string[] symbols = new string[1];
-            symbols[0] = symbol;
-            dwx.SubscribeSymbolsMarketData(symbols);
+            symbols[0] = _symbol;
+            _testClient.SubscribeSymbolsMarketData(symbols);
 
             double bid = -1;
             DateTime now = DateTime.UtcNow;
@@ -104,7 +126,7 @@ namespace TradingAPIsUnitTests
                 now = DateTime.UtcNow;
                 try
                 {
-                    bid = (double)dwx.MarketData[symbol]["bid"];
+                    bid = (double)_testClient.MarketData[_symbol]["bid"];
                     break;
                 }
                 catch
@@ -121,11 +143,11 @@ namespace TradingAPIsUnitTests
         public bool allTypesOpen()
         {
             List<string> typesOpen = new List<string>();
-            foreach (var x in dwx.OpenOrders)
+            foreach (var x in _testClient.OpenOrders)
             {
-                typesOpen.Add((string)dwx.OpenOrders[x.Key]["type"]);
+                typesOpen.Add((string)_testClient.OpenOrders[x.Key]["type"]);
             }
-            return typesOpen.ToArray().All(value => types.Contains(value));
+            return typesOpen.ToArray().All(value => _types.Contains(value));
         }
 
 
@@ -134,20 +156,20 @@ namespace TradingAPIsUnitTests
         public void openMissingTypes()
         {
 
-            double bid = (double)dwx.MarketData[symbol]["bid"];
-            double[] prices = { 0, 0, bid - priceOffset, bid + priceOffset, bid + priceOffset, bid - priceOffset };
+            double bid = (double)_testClient.MarketData[_symbol]["bid"];
+            double[] prices = { 0, 0, bid - _priceOffset, bid + _priceOffset, bid + _priceOffset, bid - _priceOffset };
 
             List<string> typesOpen = new List<string>();
-            foreach (var x in dwx.OpenOrders)
+            foreach (var x in _testClient.OpenOrders)
             {
-                typesOpen.Add((string)dwx.OpenOrders[x.Key]["type"]);
+                typesOpen.Add((string)_testClient.OpenOrders[x.Key]["type"]);
             }
 
-            for (int i = 0; i < types.Length; i++)
+            for (int i = 0; i < _types.Length; i++)
             {
-                if (typesOpen.Contains(types[i]))
+                if (typesOpen.Contains(_types[i]))
                     continue;
-                dwx.OpenOrder(symbol, types[i], lots, prices[i], 0, 0, magicNumber, "", 0);
+                _testClient.OpenOrder(_symbol, _types[i], _lots, prices[i], 0, 0, _magicNumber, "", 0);
             }
         }
 
@@ -185,19 +207,19 @@ namespace TradingAPIsUnitTests
         public bool modifyOrders()
         {
 
-            foreach (var x in dwx.OpenOrders)
+            foreach (var x in _testClient.OpenOrders)
             {
-                JObject jo = (JObject)dwx.OpenOrders[x.Key];
+                JObject jo = (JObject)_testClient.OpenOrders[x.Key];
                 String type = (String)jo["type"];
                 double openPrice = (double)jo["open_price"];
-                double sl = openPrice - priceOffset;
-                double tp = openPrice + priceOffset;
+                double sl = openPrice - _priceOffset;
+                double tp = openPrice + _priceOffset;
                 if (type.Contains("sell"))
                 {
-                    sl = openPrice + priceOffset;
-                    tp = openPrice - priceOffset;
+                    sl = openPrice + _priceOffset;
+                    tp = openPrice - _priceOffset;
                 }
-                dwx.ModifyOrder(Int32.Parse(x.Key), lots, 0, sl, tp, 0);
+                _testClient.ModifyOrder(Int32.Parse(x.Key), _lots, 0, sl, tp, 0);
             }
             bool allSet = false;
             DateTime now = DateTime.UtcNow;
@@ -206,9 +228,9 @@ namespace TradingAPIsUnitTests
             {
                 now = DateTime.UtcNow;
                 allSet = true;
-                foreach (var x in dwx.OpenOrders)
+                foreach (var x in _testClient.OpenOrders)
                 {
-                    JObject jo = (JObject)dwx.OpenOrders[x.Key];
+                    JObject jo = (JObject)_testClient.OpenOrders[x.Key];
                     double sl = (double)jo["SL"];
                     double tp = (double)jo["TP"];
                     if (sl <= 0 || tp <= 0)
@@ -230,29 +252,29 @@ namespace TradingAPIsUnitTests
 		*/
         public void closeOrder()
         {
-            if (dwx.OpenOrders.Count == 0)
+            if (_testClient.OpenOrders.Count == 0)
                 Assert.Fail("There are no order to close in closeOrder().");
 
             int ticket = -1;
-            foreach (var x in dwx.OpenOrders)
+            foreach (var x in _testClient.OpenOrders)
             {
                 ticket = Int32.Parse(x.Key);
                 break;
             }
 
-            int numOrdersBefore = dwx.OpenOrders.Count;
+            int numOrdersBefore = _testClient.OpenOrders.Count;
 
             DateTime now = DateTime.UtcNow;
             DateTime endTime = DateTime.UtcNow + new TimeSpan(0, 0, 5);
             while (now < endTime)
             {
-                dwx.CloseOrder(ticket, 0);
+                _testClient.CloseOrder(ticket, 0);
                 Thread.Sleep(1000);
                 now = DateTime.UtcNow;
-                if (dwx.OpenOrders.Count == numOrdersBefore - 1)
+                if (_testClient.OpenOrders.Count == numOrdersBefore - 1)
                     break;
             }
-            Assert.AreEqual(dwx.OpenOrders.Count, numOrdersBefore - 1);
+            Assert.AreEqual(_testClient.OpenOrders.Count, numOrdersBefore - 1);
         }
 
 
@@ -263,18 +285,18 @@ namespace TradingAPIsUnitTests
 
             double closeLots = 0.01;
 
-            if (dwx.OpenOrders.Count == 0)
+            if (_testClient.OpenOrders.Count == 0)
                 Assert.Fail("There are no order to close in closeOrderPartial().");
 
             int ticket = -1;
             double lotsBefore = -1;
-            foreach (var x in dwx.OpenOrders)
+            foreach (var x in _testClient.OpenOrders)
             {
-                string type = (string)dwx.OpenOrders[x.Key]["type"];
+                string type = (string)_testClient.OpenOrders[x.Key]["type"];
                 if (type.Equals("buy"))
                 {
                     ticket = Int32.Parse(x.Key);
-                    lotsBefore = (double)dwx.OpenOrders[x.Key]["lots"];
+                    lotsBefore = (double)_testClient.OpenOrders[x.Key]["lots"];
                     break;
                 }
             }
@@ -288,14 +310,14 @@ namespace TradingAPIsUnitTests
             DateTime endTime = DateTime.UtcNow + new TimeSpan(0, 0, 5);
             while (now < endTime)
             {
-                dwx.CloseOrder(ticket, closeLots);
+                _testClient.CloseOrder(ticket, closeLots);
                 Thread.Sleep(2000);
                 now = DateTime.UtcNow;
                 // need to loop because the ticket will change after modification. 
                 bool found = false;
-                foreach (var x in dwx.OpenOrders)
+                foreach (var x in _testClient.OpenOrders)
                 {
-                    lots = (double)dwx.OpenOrders[x.Key]["lots"];
+                    lots = (double)_testClient.OpenOrders[x.Key]["lots"];
                     if (Math.Abs(lotsBefore - closeLots - lots) < 0.001)
                     {
                         found = true;
@@ -367,7 +389,7 @@ namespace TradingAPIsUnitTests
             if (!openMultipleOrders())
                 Assert.Fail("Could not open all orders in testCloseOrdersBySymbol().");
 
-            dwx.CloseOrdersBySymbol(symbol);
+            _testClient.CloseOrdersBySymbol(_symbol);
 
             DateTime now = DateTime.UtcNow;
             DateTime endTime = DateTime.UtcNow + new TimeSpan(0, 0, 5);
@@ -375,11 +397,11 @@ namespace TradingAPIsUnitTests
             {
                 Thread.Sleep(1000);
                 now = DateTime.UtcNow;
-                if (dwx.OpenOrders.Count == 0)
+                if (_testClient.OpenOrders.Count == 0)
                     break;
-                dwx.CloseOrdersBySymbol(symbol);
+                _testClient.CloseOrdersBySymbol(_symbol);
             }
-            Assert.AreEqual(dwx.OpenOrders.Count, 0);
+            Assert.AreEqual(_testClient.OpenOrders.Count, 0);
         }
 
 
@@ -394,7 +416,7 @@ namespace TradingAPIsUnitTests
             if (!openMultipleOrders())
                 Assert.Fail("Could not open all orders in closeOrdersByMagic().");
 
-            dwx.CloseOrdersByMagic(magicNumber);
+            _testClient.CloseOrdersByMagic(_magicNumber);
 
             DateTime now = DateTime.UtcNow;
             DateTime endTime = DateTime.UtcNow + new TimeSpan(0, 0, 5);
@@ -402,11 +424,11 @@ namespace TradingAPIsUnitTests
             {
                 Thread.Sleep(1000);
                 now = DateTime.UtcNow;
-                if (dwx.OpenOrders.Count == 0)
+                if (_testClient.OpenOrders.Count == 0)
                     break;
-                dwx.CloseOrdersByMagic(magicNumber);
+                _testClient.CloseOrdersByMagic(_magicNumber);
             }
-            Assert.AreEqual(dwx.OpenOrders.Count, 0);
+            Assert.AreEqual(_testClient.OpenOrders.Count, 0);
         }
 
 
@@ -418,10 +440,10 @@ namespace TradingAPIsUnitTests
 
             String timeFrame = "M1";
 
-            string[,] symbols = new string[,] { { symbol, timeFrame } };
+            string[,] symbols = new string[,] { { _symbol, timeFrame } };
 
 
-            dwx.SubscribeSymbolsBarData(symbols);
+            _testClient.SubscribeSymbolsBarData(symbols);
 
             JObject jo = new JObject();
             DateTime now = DateTime.UtcNow;
@@ -432,7 +454,7 @@ namespace TradingAPIsUnitTests
                 now = DateTime.UtcNow;
                 try
                 {
-                    jo = (JObject)dwx.BarData[symbol + "_" + timeFrame];
+                    jo = (JObject)_testClient.BarData[_symbol + "_" + timeFrame];
                     // print(jo);
                     if (jo.Count > 0)
                         break;
@@ -454,7 +476,7 @@ namespace TradingAPIsUnitTests
 
             long end = DateTimeOffset.Now.ToUnixTimeSeconds();
             long start = end - 30 * 24 * 60 * 60;  // last 30 days
-            dwx.GetHistoricData(symbol, timeFrame, start, end);
+            _testClient.GetHistoricData(_symbol, timeFrame, start, end);
 
             JObject jo = new JObject();
             DateTime now = DateTime.UtcNow;
@@ -467,7 +489,7 @@ namespace TradingAPIsUnitTests
                 {
                     // print(symbol + "_" + timeFrame);
                     // print(dwx.HistoricData);
-                    jo = (JObject)dwx.HistoricData[symbol + "_" + timeFrame];
+                    jo = (JObject)_testClient.HistoricData[_symbol + "_" + timeFrame];
                     // print(jo);
                     if (jo.Count > 0)
                         break;
