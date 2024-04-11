@@ -1,7 +1,9 @@
 ﻿using System.Collections;
+using System.Diagnostics;
 using Newtonsoft.Json.Linq;
 using TradingAPIs.Common;
 using TradingAPIs.Common.Loggers;
+using ThreadState = System.Threading.ThreadState;
 
 namespace TradingAPIs.MetaTrader;
 public class MetaTraderClient : IConnectionClient
@@ -11,6 +13,7 @@ public class MetaTraderClient : IConnectionClient
     private string _metaTraderDirPath;  // { get; private set; }
     private bool _developMql = false;
     private readonly Logger _logger;
+
     private readonly int _sleepDelayMilliseconds;
     private readonly int _maxRetryCommandSeconds;
     private readonly bool _loadOrdersFromFile;
@@ -732,6 +735,40 @@ public class MetaTraderClient : IConnectionClient
         }
     }
 
+    private Process[] GetTerminalProcesses()
+    {
+        Process[] processes = Process.GetProcessesByName("terminal64");
+        if (processes.Length == 0)
+            processes = Process.GetProcessesByName("terminal32");
+        if (processes.Length == 0)
+            processes = Process.GetProcessesByName("terminal");
+
+        return processes;
+    }
+
+    public Process GetTerminalProcess(string? accountId = null)
+    {
+        if (_config.AccountId == null)
+            throw new ArgumentException("_config.AccountId cannot be null.");
+
+        Process[] terminalProcesses = GetTerminalProcesses();
+
+
+        foreach (Process p in terminalProcesses)
+        {
+            var fileDescription = FileVersionInfo.GetVersionInfo(p.MainModule.FileName).FileDescription;
+
+            if (fileDescription.Contains("MetaTrader") && p.MainWindowTitle.Contains(accountId))
+                return p;
+        }
+
+        return null;
+    }
+
+
+    /*----------------------------------------------------------------
+     * BELOW ARE THE METHODS WHICH SEND COMMANDS TO THE MQL SERVER EA.
+     *----------------------------------------------------------------*/
 
     /*Sends a SUBSCRIBE_SYMBOLS command to subscribe to market (tick) data.
 
@@ -904,12 +941,63 @@ public class MetaTraderClient : IConnectionClient
     /*Sends a CLOSE_ALL_ORDERS command to close all orders
     with a given symbol.
 
-    Args:
-        symbol (str): Symbol for which all orders should be closed. 
+    NOTE: Moved the code from the closeAllOrders() method 
+    from MetaTraderClientDWXUnitTest.cs to this method,
+    which checks the order count and keeps sending the
+    command until all orders are closed.
+    
+    As long as there are open orders, it will send new 
+	commands every second. This is needed because of 
+	possible requotes or other errors when closing an order.
     */
-    public void CloseAllOrders()
+    public bool CloseAllOrders(bool TryUntilTimeout = true, int timeoutSeconds = 10)
     {
-        SendCommand("CLOSE_ALL_ORDERS", "");
+        if (!TryUntilTimeout)
+        {
+            SendCommand("CLOSE_ALL_ORDERS", "");
+            return true;
+        }
+
+        DateTime now = DateTime.UtcNow;
+        DateTime endTime = DateTime.UtcNow + new TimeSpan(0, 0, timeoutSeconds);
+        while (now < endTime)
+        {
+            // sometimes it could fail if for example there is a requote. so just try again. 
+            SendCommand("CLOSE_ALL_ORDERS", "");
+            Thread.Sleep(1000);
+            now = DateTime.UtcNow;
+            if (OpenOrders.Count == 0)
+                return true;
+        }
+        return false;
+    }
+
+    public void SafeCloseAllOrders()
+    {
+        _logger.Log("Safe closing all orders...");
+        if (CloseAllOrders())
+        {
+            _logger.Log("Sucessfully closed all orders.");
+            return;
+        }
+        else
+        {
+            // if it fails, try to close all orders by symbol. 
+            _logger.Log("CloseAllOrders timed out. Trying to close all orders by symbol.");
+            foreach (var x in OpenOrders)
+            {
+                CloseOrdersBySymbol(x.Key);
+            }
+
+            if (OpenOrders.Count != 0)
+            {
+                _logger.Log("CloseAllOrdersBySymbol failed. Calling SafeCloseAllOrders again from the beginning.");
+                SafeCloseAllOrders();
+            }
+            else
+                _logger.Log("All orders closed by symbol.");
+            return;
+        }
     }
 
 

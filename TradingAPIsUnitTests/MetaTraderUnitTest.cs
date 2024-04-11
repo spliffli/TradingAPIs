@@ -30,7 +30,53 @@ Test -> Run All Tests
 namespace TradingAPIsUnitTests
 {
     [TestClass]
-    public class MetaTraderUnitTest
+    public class MetaTraderClientUnitTest
+    {
+        private string _metaTraderDirPath = "C:/Users/Administrator/AppData/Roaming/MetaQuotes/Terminal/3B534B10135CFEDF8CD1AAB8BD994B13/MQL4/Files/";
+        private string _symbol = "EURUSD";
+        private int _magicNumber = 0;
+        private int _numOpenOrders = 5;
+        private double _lots = 0.02;  // 0.02 so that we can also test partial closing. 
+        private double _priceOffset = 0.01;
+        private string[] _types = { "buy", "sell", "buylimit", "selllimit", "buystop", "sellstop" };
+
+        private MTConfiguration _testConfig = new MTConfiguration(Directory.GetCurrentDirectory() + "\\mt4TestConfig.ini");
+        private MetaTraderClient _testClient;
+
+        /*Initializes DWX_Client and closes all open orders. 
+		*/
+        [TestInitialize]
+        public void TestInitialize()
+        {
+            _testClient = new MetaTraderClient(_testConfig, new MTEventHandler());  // new MetaTraderClient(null, MetaTraderDirPath, 5, 10, false, false);
+            Thread.Sleep(1000);
+            // make sure there are no open orders when starting the test. 
+            if (!_testClient.CloseAllOrders())
+                Assert.Fail("Could not close orders in setUp().");
+        }
+
+        [TestMethod]
+        public void TestCheckIfMetaTraderRunning()
+        {
+            throw new NotImplementedException();
+        }
+
+        [TestMethod]
+        public void TestCheckIfMetaTraderInstalled()
+        {
+            throw new NotImplementedException();
+        }
+
+        [TestMethod]
+        public void TestGetTerminalProcess()
+        {
+            var terminalProcess = _testClient.GetTerminalProcess();
+
+            Assert.IsNotNull(terminalProcess);
+        }
+    }
+    [TestClass]
+    public class MetaTraderClientDWXUnitTest
     {
         private string _metaTraderDirPath = "C:/Users/Administrator/AppData/Roaming/MetaQuotes/Terminal/3B534B10135CFEDF8CD1AAB8BD994B13/MQL4/Files/";
         private string _symbol = "EURUSD";
@@ -53,7 +99,7 @@ namespace TradingAPIsUnitTests
             _testClient = new MetaTraderClient(_testConfig, new MTEventHandler());  // new MetaTraderClient(null, MetaTraderDirPath, 5, 10, false, false);
             Thread.Sleep(1000);
             // make sure there are no open orders when starting the test. 
-            if (!closeAllOrders())
+            if (!_testClient.CloseAllOrders())
                 Assert.Fail("Could not close orders in setUp().");
         }
 
@@ -92,7 +138,7 @@ namespace TradingAPIsUnitTests
 		possible requotes or other errors during closing of an 
 		order. 
 		*/
-        bool closeAllOrders()
+        public bool TryCloseAllOrders()
         {
             DateTime now = DateTime.UtcNow;
             DateTime endTime = DateTime.UtcNow + new TimeSpan(0, 0, 10);
@@ -111,6 +157,7 @@ namespace TradingAPIsUnitTests
 
         /*Subscribes to the test symbol. 
 		*/
+        [TestMethod]
         public void SubcribeSymbolsMarketData()
         {
 
@@ -179,6 +226,7 @@ namespace TradingAPIsUnitTests
 		It calls openMissingTypes() until at least one order is open 
 		for each possible order type.
 		*/
+        [TestMethod]
         public bool openOrders()
         {
 
@@ -204,6 +252,7 @@ namespace TradingAPIsUnitTests
 		
 		It will try to set the SL and TP for all open orders. 
 		*/
+        [TestMethod]
         public bool modifyOrders()
         {
 
@@ -250,6 +299,7 @@ namespace TradingAPIsUnitTests
 		This could fail if the closing of an orders takes too long and 
 		then two orders might be closed. 
 		*/
+        [TestMethod]
         public void closeOrder()
         {
             if (_testClient.OpenOrders.Count == 0)
@@ -280,6 +330,7 @@ namespace TradingAPIsUnitTests
 
         /*Tries to partially close an order. 
 		*/
+        [TestMethod]
         public void closeOrderPartial()
         {
 
@@ -342,7 +393,7 @@ namespace TradingAPIsUnitTests
         public void TestOpenModifyCloseOrder()
         {
 
-            if (!closeAllOrders())
+            if (!_testClient.CloseAllOrders())
                 Assert.Fail("Could not close orders in testOpenModifyCloseOrder().");
 
             SubcribeSymbolsMarketData();
@@ -358,7 +409,7 @@ namespace TradingAPIsUnitTests
 
             closeOrderPartial();
 
-            if (!closeAllOrders())
+            if (!_testClient.CloseAllOrders())
                 Assert.Fail("Could not close orders after testOpenModifyCloseOrder().");
         }
 
@@ -374,7 +425,7 @@ namespace TradingAPIsUnitTests
             if (!openMultipleOrders())
                 Assert.Fail("Could not open all orders in testCloseAllOrders().");
 
-            Assert.IsTrue(closeAllOrders());
+            Assert.IsTrue(_testClient.CloseAllOrders());
         }
 
 

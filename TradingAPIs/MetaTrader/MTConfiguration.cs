@@ -6,6 +6,7 @@ namespace TradingAPIs.MetaTrader;
 public class MTConfiguration : ISessionConfiguration
 {
     private string _name;
+    private string _accountIdStr;
     private string _metaTraderDirPath;
 
     private int _sleepDelayMilliseconds = 5;
@@ -25,6 +26,7 @@ public class MTConfiguration : ISessionConfiguration
     private string[,] _symbolsBarData;
 
     public string Name { get { return _name; } set { _name = value; } }
+    public string AccountId { get { return _accountIdStr; } set { _accountIdStr = value; } }
     public string MetaTraderDirPath { get { return _metaTraderDirPath; } }
 
     public int SleepDelayMilliseconds { get { return _sleepDelayMilliseconds; } }
@@ -75,6 +77,7 @@ public class MTConfiguration : ISessionConfiguration
         // Retrieve specific values from the configuration file, such as instance name and directory path.
         // [MetaData]
         _name = configFileFromPath.GetValue("MetaData", "clientName");
+        _accountIdStr = configFileFromPath.GetValue("MetaData", "accountId");
         _metaTraderDirPath = configFileFromPath.GetValue("MetaData", "metaTraderDirPath");
 
         // [Init]
