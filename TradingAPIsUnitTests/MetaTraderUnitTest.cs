@@ -15,7 +15,7 @@ Tests to check that the MetaTraderClient is working correctly.  This file is a m
 
 Please don't run this on your live account. It will open and close positions!
 
-The MT4/5 server must be initialized with MaximumOrders>=5 and MaximumLotSize>=0.02. 
+The MT4/5 server must be initialized with maximumOrders>=5 and maximumLotSize>=0.02. 
 
 
 compile and run tests:
@@ -51,20 +51,46 @@ namespace TradingAPIsUnitTests
             _testClient = new MetaTraderClient(_testConfig, new MTEventHandler());  // new MetaTraderClient(null, MetaTraderDirPath, 5, 10, false, false);
             Thread.Sleep(1000);
             // make sure there are no open orders when starting the test. 
+
+            // if (!_testClient.CheckIfMarketIsOpen())
+                // Assert.Inconclusive("Market is closed for the weekend so some tests will fail even if they are working when the market's open.");
+
+            if (!_testClient.CheckIfMetaTraderIsInstalled())
+                Assert.Fail("MetaTrader is not installed.");
+
+            if (!_testClient.CheckIfTerminalIsRunning())
+                Assert.Fail("Terminal is not running.");
+
+            if (!_testClient.CheckIfServerEaIsRunning())
+                Assert.Fail("Server EA is not running.");
+
             if (!_testClient.CloseAllOrders())
                 Assert.Fail("Could not close orders in setUp().");
         }
 
         [TestMethod]
-        public void TestCheckIfMetaTraderRunning()
+        public void TestCheckIfMarketIsOpen()
         {
-            throw new NotImplementedException();
+            bool MarketIsOpen = _testClient.CheckIfMarketIsOpen();
+
+            Assert.IsTrue(MarketIsOpen, "Market isn't open because of the weekend so some tests will fail even if they are working when the market's open.");
         }
 
         [TestMethod]
-        public void TestCheckIfMetaTraderInstalled()
+        public void TestCheckIfMetaTraderIsInstalled()
         {
-            throw new NotImplementedException();
+            bool MetaTraderIsInstalled = _testClient.CheckIfMetaTraderIsInstalled();
+            
+            Assert.IsTrue(MetaTraderIsInstalled, "Metatrader isn't installed in the path specified in the config.");
+        }
+
+        [TestMethod]
+        public void TestGetTerminalProcesses()
+        {
+            var terminalProcesses = _testClient.GetTerminalProcesses();
+
+            Assert.IsNotNull(terminalProcesses, "terminalProcesses can't be null. Check if MetaTrader is running.");
+            Assert.IsTrue(terminalProcesses.Count() > 0, "terminalProcesses.Count() must be greater than 0. Check if MetaTrader is running.");
         }
 
         [TestMethod]
@@ -72,7 +98,32 @@ namespace TradingAPIsUnitTests
         {
             var terminalProcess = _testClient.GetTerminalProcess();
 
-            Assert.IsNotNull(terminalProcess);
+            Assert.IsNotNull(terminalProcess, "terminalProcess can't be null. Check if MetaTrader is running.");
+        }
+
+        [TestMethod]
+        public void TestCheckIfTerminalIsRunning()
+        {
+            bool TerminalIsRunning = _testClient.CheckIfTerminalIsRunning();
+
+            Assert.IsTrue(TerminalIsRunning, "MetaTrader terminal isn't running so tests will fail.");
+        }
+
+        [TestMethod]
+        public void TestCheckIfServerEaIsRunning()
+        {
+            bool ServerEaIsRunning = _testClient.CheckIfServerEaIsRunning();
+
+            Assert.IsTrue(ServerEaIsRunning);
+        }
+
+        [TestMethod]
+        public void TestFetchMqlParams()
+        {
+            var mqlParams = _testClient.GetMqlParams();
+
+            Assert.IsNotNull(mqlParams);
+            // Assert.IsTrue(mqlParams.Count() > 0);
         }
     }
     [TestClass]
@@ -98,9 +149,20 @@ namespace TradingAPIsUnitTests
         {
             _testClient = new MetaTraderClient(_testConfig, new MTEventHandler());  // new MetaTraderClient(null, MetaTraderDirPath, 5, 10, false, false);
             Thread.Sleep(1000);
+
+            if (!_testClient.CheckIfMetaTraderIsInstalled())
+                Assert.Fail("MetaTrader is not installed.");
+
+            if (!_testClient.CheckIfTerminalIsRunning())
+                Assert.Fail("Terminal is not running.");
+
+            if (!_testClient.CheckIfServerEaIsRunning())
+                Assert.Fail("Server EA is not running.");
+
             // make sure there are no open orders when starting the test. 
             if (!_testClient.CloseAllOrders())
                 Assert.Fail("Could not close orders in setUp().");
+
         }
 
 
@@ -158,8 +220,10 @@ namespace TradingAPIsUnitTests
         /*Subscribes to the test symbol. 
 		*/
         [TestMethod]
-        public void SubcribeSymbolsMarketData()
+        public void TestSubcribeSymbolsMarketData()
         {
+            if (!_testClient.CheckIfMarketIsOpen())
+                Assert.Inconclusive("Market is closed for the weekend so can't subscribe to live market data. Try again when it's open.");
 
             string[] symbols = new string[1];
             symbols[0] = _symbol;
@@ -227,8 +291,10 @@ namespace TradingAPIsUnitTests
 		for each possible order type.
 		*/
         [TestMethod]
-        public bool openOrders()
+        public bool OpenTestOrders()
         {
+            if (!_testClient.CheckIfMarketIsOpen())
+                Assert.Inconclusive("Market is closed for the weekend so can't open test orders. Try again when it's open.");
 
             bool ato = false;
             DateTime now = DateTime.UtcNow;
@@ -253,8 +319,10 @@ namespace TradingAPIsUnitTests
 		It will try to set the SL and TP for all open orders. 
 		*/
         [TestMethod]
-        public bool modifyOrders()
+        public bool ModifyTestOrders()
         {
+            if (_testClient.OpenOrders.Count == 0)
+                Assert.Fail("There are no test orders to modify in ModifyTestOrders().");
 
             foreach (var x in _testClient.OpenOrders)
             {
@@ -300,10 +368,13 @@ namespace TradingAPIsUnitTests
 		then two orders might be closed. 
 		*/
         [TestMethod]
-        public void closeOrder()
+        public void TestCloseOrder()
         {
+            if (!_testClient.CheckIfMarketIsOpen())
+                Assert.Inconclusive("Market is closed for the weekend so can't close orders. Try again when it's open.");
+
             if (_testClient.OpenOrders.Count == 0)
-                Assert.Fail("There are no order to close in closeOrder().");
+                Assert.Fail("There are no orders to close in closeOrder().");
 
             int ticket = -1;
             foreach (var x in _testClient.OpenOrders)
@@ -331,8 +402,10 @@ namespace TradingAPIsUnitTests
         /*Tries to partially close an order. 
 		*/
         [TestMethod]
-        public void closeOrderPartial()
+        public void TestCloseOrderPartial()
         {
+            if (!_testClient.CheckIfMarketIsOpen())
+                Assert.Inconclusive("Market is closed for the weekend so can't close orders. Try again when it's open.");
 
             double closeLots = 0.01;
 
@@ -392,22 +465,27 @@ namespace TradingAPIsUnitTests
         [TestMethod]
         public void TestOpenModifyCloseOrder()
         {
+            if (!_testClient.CheckIfMarketIsOpen())
+                Assert.Inconclusive("Market is closed for the weekend so can't open, modify & close an order. Try again when it's open.");
+
+            if (!_testClient.CheckIfMarketIsOpen())
+                Assert.Inconclusive("Market is closed for the weekend so can't open test orders. Try again when it's open.");
 
             if (!_testClient.CloseAllOrders())
                 Assert.Fail("Could not close orders in testOpenModifyCloseOrder().");
 
-            SubcribeSymbolsMarketData();
+            TestSubcribeSymbolsMarketData();
 
-            if (!openOrders())
+            if (!OpenTestOrders())
                 Assert.Fail("openOrders() returned false.");
 
 
-            if (!modifyOrders())
+            if (!ModifyTestOrders())
                 Assert.Fail("modifyOrders() returned false.");
 
-            closeOrder();
+            TestCloseOrder();
 
-            closeOrderPartial();
+            TestCloseOrderPartial();
 
             if (!_testClient.CloseAllOrders())
                 Assert.Fail("Could not close orders after testOpenModifyCloseOrder().");
@@ -421,6 +499,8 @@ namespace TradingAPIsUnitTests
         [TestMethod]
         public void TestCloseAllOrders()
         {
+            if (!_testClient.CheckIfMarketIsOpen())
+                Assert.Inconclusive("Market is closed for the weekend so can't close all orders. Try again when it's open.");
 
             if (!openMultipleOrders())
                 Assert.Fail("Could not open all orders in testCloseAllOrders().");
@@ -436,6 +516,8 @@ namespace TradingAPIsUnitTests
         [TestMethod]
         public void TestCloseOrdersBySymbol()
         {
+            if (!_testClient.CheckIfMarketIsOpen())
+                Assert.Inconclusive("Market is closed for the weekend so can't close orders by symbol. Try again when it's open.");
 
             if (!openMultipleOrders())
                 Assert.Fail("Could not open all orders in testCloseOrdersBySymbol().");
@@ -463,6 +545,8 @@ namespace TradingAPIsUnitTests
         [TestMethod]
         public void TestCloseOrdersByMagic()
         {
+            if (!_testClient.CheckIfMarketIsOpen())
+                Assert.Inconclusive("Market is closed for the weekend so can't close orders by magic. Try again when it's open.");
 
             if (!openMultipleOrders())
                 Assert.Fail("Could not open all orders in closeOrdersByMagic().");
@@ -488,6 +572,11 @@ namespace TradingAPIsUnitTests
         [TestMethod]
         public void TestSubscribeSymbolsBarData()
         {
+            if (!_testClient.CheckIfMarketIsOpen())
+                Assert.Inconclusive("Market is closed for the weekend so can't subscribe to bar data. Try again when it's open.");
+
+            if (!_testClient.CheckIfMarketIsOpen())
+                Assert.Inconclusive("Market is closed for the weekend so can't subscribe to bar data. Try again when it's open.");
 
             String timeFrame = "M1";
 
@@ -522,6 +611,8 @@ namespace TradingAPIsUnitTests
         [TestMethod]
         public void TestGetHistoricData()
         {
+            if (!_testClient.CheckIfMarketIsOpen())
+                Assert.Inconclusive("Market is closed for the weekend so can't get historic data. Try again when it's open.");
 
             string timeFrame = "D1";
 

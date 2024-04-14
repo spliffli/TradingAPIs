@@ -1,8 +1,11 @@
 ﻿using System.Collections;
 using System.Diagnostics;
+using System.Threading;
 using Newtonsoft.Json.Linq;
 using TradingAPIs.Common;
 using TradingAPIs.Common.Loggers;
+using static System.Net.Mime.MediaTypeNames;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 using ThreadState = System.Threading.ThreadState;
 
 namespace TradingAPIs.MetaTrader;
@@ -39,12 +42,21 @@ public class MetaTraderClient : IConnectionClient
     private string _lastHistoricDataStr = "";
     private string _lastHistoricTradesStr = "";
 
-    public JObject OpenOrders = new JObject();
-    public JObject AccountInfo = new JObject();
-    public JObject MarketData = new JObject();
-    public JObject BarData = new JObject();
-    public JObject HistoricData = new JObject();
-    public JObject HistoricTrades = new JObject();
+    private JObject _messages = new JObject();
+    private JObject _openOrders = new JObject();
+    private JObject _accountInfo = new JObject();
+    private JObject _marketData = new JObject();
+    private JObject _barData = new JObject();
+    private JObject _historicData = new JObject();
+    private JObject _historicTrades = new JObject();
+
+    public JObject Messages { get { return _messages; } }
+    public JObject OpenOrders { get { return _openOrders; } }
+    public JObject AccountInfo { get { return _accountInfo; } }
+    public JObject MarketData { get { return _marketData; } }
+    public JObject BarData { get { return _barData; } }
+    public JObject HistoricData { get { return _historicData; } }
+    public JObject HistoricTrades { get { return _historicTrades; } }
 
     private JObject _lastBarData = new JObject();
     private JObject _lastMarketData = new JObject();
@@ -276,7 +288,7 @@ public class MetaTraderClient : IConnectionClient
         // open orders are stored in client.OpenOrders.
         // historic trades are stored in client.HistoricTrades.
 
-        Console.WriteLine("\nAccount info:\n" + AccountInfo + "\n");
+        Console.WriteLine("\nAccount info:\n" + _accountInfo + "\n");
 
         if (SubscribesToTickData)
         {
@@ -364,20 +376,20 @@ public class MetaTraderClient : IConnectionClient
             JObject dataOrders = (JObject)data["orders"];
 
             bool newEvent = false;
-            foreach (var x in OpenOrders)
+            foreach (var x in _openOrders)
             {
                 // JToken value = x.Value;
                 if (dataOrders[x.Key] == null)
                 {
                     newEvent = true;
                     if (_verbose)
-                        Console.WriteLine("Order removed: " + OpenOrders[x.Key].ToString());
+                        Console.WriteLine("Order removed: " + _openOrders[x.Key].ToString());
                 }
             }
             foreach (var x in dataOrders)
             {
                 // JToken value = x.Value;
-                if (OpenOrders[x.Key] == null)
+                if (_openOrders[x.Key] == null)
                 {
                     newEvent = true;
                     if (_verbose)
@@ -385,8 +397,8 @@ public class MetaTraderClient : IConnectionClient
                 }
             }
 
-            OpenOrders = dataOrders;
-            AccountInfo = (JObject)data["account_info"];
+            _openOrders = dataOrders;
+            _accountInfo = (JObject)data["account_info"];
 
             if (_loadOrdersFromFile)
                 MTHelpers.TryWriteToFile(_pathOrdersStored, data.ToString());
@@ -400,11 +412,10 @@ public class MetaTraderClient : IConnectionClient
     /*Regularly checks the file for messages and triggers
     the eventHandler.OnMessage() function.
     */
-    private void CheckMessages()
+    private void CheckMessages(CancellationToken token = default)
     {
-        while (Active)
+        while (Active && !token.IsCancellationRequested)
         {
-
             Thread.Sleep(_sleepDelayMilliseconds);
 
             if (!_start)
@@ -496,19 +507,19 @@ public class MetaTraderClient : IConnectionClient
             if (data == null)
                 continue;
 
-            MarketData = data;
+            _marketData = data;
 
             if (_eventHandler != null)
             {
-                foreach (var x in MarketData)
+                foreach (var x in _marketData)
                 {
                     string symbol = x.Key;
-                    if (_lastMarketData[symbol] == null || !MarketData[symbol].Equals(_lastMarketData[symbol]))
+                    if (_lastMarketData[symbol] == null || !_marketData[symbol].Equals(_lastMarketData[symbol]))
                     {
                         // JObject jo = (JObject)marketData[symbol];
                         _eventHandler.OnTick(this, symbol,
-                                            (double)MarketData[symbol]["bid"],
-                                            (double)MarketData[symbol]["ask"]);
+                                            (double)_marketData[symbol]["bid"],
+                                            (double)_marketData[symbol]["ask"]);
                     }
                 }
             }
@@ -551,26 +562,26 @@ public class MetaTraderClient : IConnectionClient
             if (data == null)
                 continue;
 
-            BarData = data;
+            _barData = data;
 
             if (_eventHandler != null)
             {
-                foreach (var x in BarData)
+                foreach (var x in _barData)
                 {
                     string st = x.Key;
-                    if (_lastBarData[st] == null || !BarData[st].Equals(_lastBarData[st]))
+                    if (_lastBarData[st] == null || !_barData[st].Equals(_lastBarData[st]))
                     {
                         string[] stSplit = st.Split("_");
                         if (stSplit.Length != 2)
                             continue;
                         // JObject jo = (JObject)barData[symbol];
                         _eventHandler.OnBarData(this, stSplit[0], stSplit[1],
-                                               (String)BarData[st]["time"],
-                                               (double)BarData[st]["open"],
-                                               (double)BarData[st]["high"],
-                                               (double)BarData[st]["low"],
-                                               (double)BarData[st]["close"],
-                                               (int)BarData[st]["tick_volume"]);
+                                               (string)_barData[st]["time"],
+                                               (double)_barData[st]["open"],
+                                               (double)_barData[st]["high"],
+                                               (double)_barData[st]["low"],
+                                               (double)_barData[st]["close"],
+                                               (int)_barData[st]["tick_volume"]);
                     }
                 }
             }
@@ -613,7 +624,7 @@ public class MetaTraderClient : IConnectionClient
                 {
                     foreach (var x in data)
                     {
-                        HistoricData[x.Key] = data[x.Key];
+                        _historicData[x.Key] = data[x.Key];
                     }
 
                     MTHelpers.TryDeleteFile(_pathHistoricData);
@@ -655,7 +666,7 @@ public class MetaTraderClient : IConnectionClient
 
                 if (data != null)
                 {
-                    HistoricTrades = data;
+                    _historicTrades = data;
 
                     MTHelpers.TryDeleteFile(_pathHistoricTrades);
 
@@ -694,8 +705,8 @@ public class MetaTraderClient : IConnectionClient
             return;
 
         _lastOpenOrdersStr = text;
-        OpenOrders = (JObject)data["orders"];
-        AccountInfo = (JObject)data["account_info"];
+        _openOrders = (JObject)data["orders"];
+        _accountInfo = (JObject)data["account_info"];
     }
 
 
@@ -735,7 +746,12 @@ public class MetaTraderClient : IConnectionClient
         }
     }
 
-    private Process[] GetTerminalProcesses()
+    public bool CheckIfMetaTraderIsInstalled()
+    {
+        return Directory.Exists(_metaTraderDirPath);
+    }
+
+    public Process[] GetTerminalProcesses()
     {
         Process[] processes = Process.GetProcessesByName("terminal64");
         if (processes.Length == 0)
@@ -743,32 +759,106 @@ public class MetaTraderClient : IConnectionClient
         if (processes.Length == 0)
             processes = Process.GetProcessesByName("terminal");
 
-        return processes;
+        List<Process> terminalProcesses = new List<Process>();
+        
+        foreach (Process p in processes)
+        {
+            var fileDescription = FileVersionInfo.GetVersionInfo(p.MainModule.FileName).FileDescription;
+
+            if (fileDescription.Contains("MetaTrader") && p.MainWindowTitle.Contains(_config.AccountId))
+                terminalProcesses.Add(p);
+        }
+
+        return terminalProcesses.ToArray();
     }
 
-    public Process GetTerminalProcess(string? accountId = null)
+    public Process? GetTerminalProcess()
     {
         if (_config.AccountId == null)
-            throw new ArgumentException("_config.AccountId cannot be null.");
+            throw new ArgumentException("accountId cannot be null. Set the value in your config.ini file, or when you initialize an MTConfiguration object in the source code.");
 
         Process[] terminalProcesses = GetTerminalProcesses();
 
 
         foreach (Process p in terminalProcesses)
         {
-            var fileDescription = FileVersionInfo.GetVersionInfo(p.MainModule.FileName).FileDescription;
-
-            if (fileDescription.Contains("MetaTrader") && p.MainWindowTitle.Contains(accountId))
+            if (p.MainWindowTitle.Contains(_config.AccountId))
                 return p;
         }
 
         return null;
     }
 
+    public bool CheckIfTerminalIsRunning()
+    {
+        return GetTerminalProcess() != null;
+    }
 
-    /*----------------------------------------------------------------
-     * BELOW ARE THE METHODS WHICH SEND COMMANDS TO THE MQL SERVER EA.
+    /*----------------------------------------------------------------*
+     * BELOW ARE THE METHODS WHICH SEND COMMANDS TO THE MQL SERVER EA *
      *----------------------------------------------------------------*/
+
+    public bool CheckIfServerEaIsRunning()
+    {
+        var tokenSource = new CancellationTokenSource();
+        Thread tempMessageThread = new Thread(() => CheckMessages(tokenSource.Token));
+
+        if (!_messageThread.IsAlive || !(_messageThread.ThreadState == ThreadState.Running || _messageThread.ThreadState == ThreadState.WaitSleepJoin))
+            Console.WriteLine("Client's messageThread isn't running so starting tempMessageThread while checking if the server EA is running.");
+            tempMessageThread.Start();
+
+        int timeoutSeconds = 10;
+        var lastMessagesStrBeforeCommand = _lastMessagesStr;
+        var lastMessagesDataBeforeCommand = JObject.Parse(_lastMessagesStr);
+        var lastMessageBeforeCommand = lastMessagesDataBeforeCommand.Last;
+
+        bool isRunning = false;
+
+        if (_verbose)
+            Console.WriteLine($"lastMessageBeforeCommand: {lastMessageBeforeCommand}");
+
+        GetHistoricTrades(1);
+
+        Stopwatch sw = new Stopwatch();
+        sw.Start();
+
+        while (sw.Elapsed.TotalSeconds < timeoutSeconds)
+        {
+            if (_lastMessagesStr != lastMessagesStrBeforeCommand)
+            {
+                JObject lastMessagesDataAfterCommand = JObject.Parse(_lastMessagesStr);
+
+                var lastMessageAfterCommand = lastMessagesDataAfterCommand.Last;
+
+                if (_verbose)
+                    Console.WriteLine($"lastMessageAfterCommand: {lastMessageAfterCommand}");
+
+                // if (_lastMessagesStr.Contains)
+                // return true;
+                isRunning = true;
+                break;
+            }
+
+            Thread.Sleep(100);
+        }
+
+        if (!isRunning)
+            Console.WriteLine("Server EA is not running.");
+
+        
+        tokenSource.Cancel();   // Request cancellation. 
+
+        if (tempMessageThread.IsAlive || tempMessageThread.ThreadState == ThreadState.Running || tempMessageThread.ThreadState == ThreadState.WaitSleepJoin)
+            tempMessageThread.Join();      // To wait for cancellation, `Join` blocks the calling thread until the thread represented by this instance terminates.
+        else if (_messageThread.IsAlive || _messageThread.ThreadState == ThreadState.Running || _messageThread.ThreadState == ThreadState.WaitSleepJoin)
+            _messageThread.Join();
+        else
+            throw new InvalidOperationException("_messageThread & tempMessageThread are not running. Cannot check if server EA is running");
+
+        tokenSource.Dispose();  // Dispose the token source.
+        
+        return isRunning;
+    }
 
     /*Sends a SUBSCRIBE_SYMBOLS command to subscribe to market (tick) data.
 
@@ -791,7 +881,7 @@ public class MetaTraderClient : IConnectionClient
 
             throw new ArgumentException("Market data thread is not running so cannot subscribe to market data. In the MTConfiguration, if SubscribeToTickData = true, ensure that StartMarketDataThread = true as well to avoid this exception.");
         }
-        SendCommand("SUBSCRIBE_SYMBOLS", String.Join(",", symbols));
+        SendCommand("SUBSCRIBE_SYMBOLS", string.Join(",", symbols));
     }
 
 
@@ -844,7 +934,7 @@ public class MetaTraderClient : IConnectionClient
         On receiving the data the eventHandler.OnHistoricData() 
         function will be triggered. 
     */
-    public void GetHistoricData(String symbol, String timeFrame, long start, long end)
+    public void GetHistoricData(string symbol, string timeFrame, long start, long end)
     {
         if (_historicDataThread == null || !_historicDataThread.IsAlive)
         {
@@ -966,7 +1056,7 @@ public class MetaTraderClient : IConnectionClient
             SendCommand("CLOSE_ALL_ORDERS", "");
             Thread.Sleep(1000);
             now = DateTime.UtcNow;
-            if (OpenOrders.Count == 0)
+            if (_openOrders.Count == 0)
                 return true;
         }
         return false;
@@ -984,12 +1074,12 @@ public class MetaTraderClient : IConnectionClient
         {
             // if it fails, try to close all orders by symbol. 
             _logger.Log("CloseAllOrders timed out. Trying to close all orders by symbol.");
-            foreach (var x in OpenOrders)
+            foreach (var x in _openOrders)
             {
                 CloseOrdersBySymbol(x.Key);
             }
 
-            if (OpenOrders.Count != 0)
+            if (_openOrders.Count != 0)
             {
                 _logger.Log("CloseAllOrdersBySymbol failed. Calling SafeCloseAllOrders again from the beginning.");
                 SafeCloseAllOrders();
@@ -1049,8 +1139,10 @@ public class MetaTraderClient : IConnectionClient
 
     Multiple command files are used to allow for fast execution 
     of multiple commands in the correct chronological order. 
+
+    Note: Modified so that it returns the commandId
     */
-    void SendCommand(string command, string content)
+    int SendCommand(string command, string content)
     {
         // Need lock so that different threads do not use the same 
         // commandID or write at the same time.
@@ -1083,7 +1175,110 @@ public class MetaTraderClient : IConnectionClient
                 Thread.Sleep(_sleepDelayMilliseconds);
                 now = DateTime.UtcNow;
             }
+
+            return _commandId;
         }
     }
 
+    /*--------------------------------------------------------------------------------------*
+     * BELOW ARE THE METHODS WHICH SEND CUSTOM COMMANDS ADDED BY: Jonathon Quick (spliffli) *
+     *--------------------------------------------------------------------------------------*/
+
+    public MqlParams GetMqlParams()
+    {
+        throw new NotImplementedException();
+    }
+
+    public string WaitForMqlResponseMessage(int commandId)
+    {
+        if (!IsThreadRunning(_messageThread))
+            throw new InvalidOperationException("Message thread is not running. Cannot wait for MQL response.");
+
+        throw new NotImplementedException();
+
+        DateTime now = DateTime.UtcNow;
+        DateTime endTime = DateTime.UtcNow + new TimeSpan(0, 0, _maxRetryCommandSeconds);
+
+        // trying again for X seconds in case all files exist or are 
+        // currently read from mql side. 
+        while (now < endTime)
+        {
+            bool success = false;
+            
+            if (success) break;
+            Thread.Sleep(_sleepDelayMilliseconds);
+            now = DateTime.UtcNow;
+        }
+    }
+
+    private string GetMqlParamValueStr(string paramName)
+    {
+        int commandId = SendCommand("GET_PARAM_VALUE", paramName);
+
+        string response = WaitForMqlResponseMessage(commandId);
+
+        return response;
+    }
+
+    private bool SetMqlParamValueStr(string paramName, string paramValueStr, bool waitForConfirmation = true)
+    {
+        throw new NotImplementedException();
+    }
+
+    internal int GetMqlIntParam(string paramName)
+    {
+        string paramValueStr = GetMqlParamValueStr(paramName);
+        
+        return Int32.Parse(paramValueStr);
+    }
+
+    internal bool SetMqlIntParam(string paramName, int value)
+    {
+        throw new NotImplementedException();
+
+        string paramValueStr = value.ToString();
+
+        return SetMqlParamValueStr(paramName, paramValueStr);
+    }
+
+    internal bool GetMqlBoolParam(string paramName)
+    {
+        throw new NotImplementedException();
+    }
+
+    internal bool SetMqlBoolParam(string paramName, bool value)
+    {
+        throw new NotImplementedException();
+    }
+
+    internal double GetMqlDoubleParam(string v)
+    {
+        throw new NotImplementedException();
+    }
+
+    internal void SetMqlDoubleParam(string v, double value)
+    {
+        throw new NotImplementedException();
+    }
+
+    public bool CheckIfMarketIsOpen()
+    {
+        var now = DateTime.UtcNow;
+        var dayOfWeek = now.DayOfWeek;
+
+        if (dayOfWeek == DayOfWeek.Saturday)
+            return false;
+        else if (dayOfWeek == DayOfWeek.Sunday)
+            if (now.Hour > 22)
+                return true;
+            else
+                return false;
+        else if (dayOfWeek == DayOfWeek.Friday)
+            if (now.Hour < 22)
+                return true;
+            else
+                return false;
+        else
+            return true;
+    }
 }

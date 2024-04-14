@@ -17,7 +17,7 @@
 
 input string t0 = "--- General Parameters ---";
 // if the timer is too small, we might have problems accessing the files from python (mql will write to file every update time). 
-input int MILLISECOND_TIMER = 25;
+input int millisecondTimer = 25;
 
 input int numLastMessages = 50;
 input string t1 = "If true, it will open charts for bar data symbols, ";
@@ -25,9 +25,9 @@ input string t2 = "which reduces the delay on a new bar.";
 input bool openChartsForBarData = true;
 input bool openChartsForHistoricData = true;
 input string t3 = "--- Trading Parameters ---";
-input int MaximumOrders = 1;
-input double MaximumLotSize = 0.01;
-input int SlippagePoints = 3;
+input int maximumOrders = 1;
+input double maximumLotSize = 0.01;
+input int slippagePoints = 3;
 input int lotSizeDigits = 2;
 
 int maxCommandFiles = 50;
@@ -128,7 +128,7 @@ Instrument BarDataInstruments[];
 //+------------------------------------------------------------------+
 int OnInit() {
 
-   if (!EventSetMillisecondTimer(MILLISECOND_TIMER)) {
+   if (!EventSetMillisecondTimer(millisecondTimer)) {
       Print("EventSetMillisecondTimer() returned an error: ", ErrorDescription(GetLastError()));
       return INIT_FAILED;
    }
@@ -153,7 +153,7 @@ void OnDeinit(const int reason) {
 void OnTimer() {
    
    // update prices regularly in case there was no tick within X milliseconds (for non-chart symbols). 
-   if (GetTickCount() >= lastUpdateMillis + MILLISECOND_TIMER) OnTick();
+   if (GetTickCount() >= lastUpdateMillis + millisecondTimer) OnTick();
 }
 
 //+------------------------------------------------------------------+
@@ -262,8 +262,8 @@ void OpenOrder(string orderStr) {
    }
    
    int numOrders = NumOrders();
-   if (numOrders >= MaximumOrders) {
-      SendError("OPEN_ORDER_MAXIMUM_NUMBER", StringFormat("Number of orders (%d) larger than or equal to MaximumOrders (%d).", numOrders, MaximumOrders));
+   if (numOrders >= maximumOrders) {
+      SendError("OPEN_ORDER_MAXIMUM_NUMBER", StringFormat("Number of orders (%d) larger than or equal to maximumOrders (%d).", numOrders, maximumOrders));
       return;
    }
    
@@ -291,8 +291,8 @@ void OpenOrder(string orderStr) {
       return;
    }
    
-   if (lots > MaximumLotSize) {
-      SendError("OPEN_ORDER_LOTSIZE_TOO_LARGE", StringFormat("Lot size (%.2f) larger than MaximumLotSize (%.2f).", lots, MaximumLotSize));
+   if (lots > maximumLotSize) {
+      SendError("OPEN_ORDER_LOTSIZE_TOO_LARGE", StringFormat("Lot size (%.2f) larger than maximumLotSize (%.2f).", lots, maximumLotSize));
       return;
    }
    
@@ -301,7 +301,7 @@ void OpenOrder(string orderStr) {
       return;
    }
    
-   int ticket = OrderSend(symbol, orderType, lots, price, SlippagePoints, stopLoss, takeProfit, comment, magic, expiration);
+   int ticket = OrderSend(symbol, orderType, lots, price, slippagePoints, stopLoss, takeProfit, comment, magic, expiration);
    if (ticket >= 0) {
       SendInfo("Successfully sent order " + IntegerToString(ticket) + ": " + symbol + ", " + OrderTypeToString(orderType) + ", " + DoubleToString(lots, lotSizeDigits) + ", " + DoubleToString(price, digits));
    } else {
@@ -366,7 +366,7 @@ void CloseOrder(string orderStr) {
    bool res = false;
    if (OrderType() == OP_BUY || OrderType() == OP_SELL) {
        if (lots == 0) lots = OrderLots();
-       res = OrderClose(ticket, lots, OrderClosePrice(), SlippagePoints);
+       res = OrderClose(ticket, lots, OrderClosePrice(), slippagePoints);
    } else {
       res = OrderDelete(ticket);
    }
@@ -388,7 +388,7 @@ void CloseAllOrders() {
       if (!OrderSelect(i,SELECT_BY_POS)) continue;
       
       if (OrderType() == OP_BUY || OrderType() == OP_SELL) {
-         bool res = OrderClose(OrderTicket(), OrderLots(), OrderClosePrice(), SlippagePoints);
+         bool res = OrderClose(OrderTicket(), OrderLots(), OrderClosePrice(), slippagePoints);
          if (res) 
             closed++;
          else 
@@ -420,7 +420,7 @@ void CloseOrdersBySymbol(string symbol) {
       if (!OrderSelect(i,SELECT_BY_POS) || OrderSymbol() != symbol) continue;
       
       if (OrderType() == OP_BUY || OrderType() == OP_SELL) {
-         bool res = OrderClose(OrderTicket(), OrderLots(), OrderClosePrice(), SlippagePoints);
+         bool res = OrderClose(OrderTicket(), OrderLots(), OrderClosePrice(), slippagePoints);
          if (res) 
             closed++;
          else 
@@ -454,7 +454,7 @@ void CloseOrdersByMagic(string magicStr) {
       if (!OrderSelect(i,SELECT_BY_POS) || OrderMagicNumber() != magic) continue;
       
       if (OrderType() == OP_BUY || OrderType() == OP_SELL) {
-         bool res = OrderClose(OrderTicket(), OrderLots(), OrderClosePrice(), SlippagePoints);
+         bool res = OrderClose(OrderTicket(), OrderLots(), OrderClosePrice(), slippagePoints);
          if (res) 
             closed++;
          else 
