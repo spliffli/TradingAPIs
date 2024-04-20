@@ -54,9 +54,7 @@ public class MTXConfig : ISessionConfiguration
         var requiredConfigSections = new List<string> { "[MetaData]", "[Init]", "[Threads]", "[DataSubscriptions]", "[Symbols]", "[Symbols.BarData]" };
 
         // Check if any required sections are missing from the configuration file and throw an exception if so.
-        var missingSections = CheckForMissingSections(requiredConfigSections, configFileSections);
-        if (missingSections.Any())
-            throw new InvalidOperationException($"The configuration file is missing the following sections: {string.Join(", ", missingSections)}");
+        CheckIfSectionsMissing(requiredConfigSections, configFileSections);
 
 
         // Retrieve specific values from the configuration file, such as instance name and directory path.
@@ -89,7 +87,7 @@ public class MTXConfig : ISessionConfiguration
     }
 
 
-    private static List<string> CheckForMissingSections(List<string> requiredConfigSections, List<string> configFileSections)
+    private static int CheckIfSectionsMissing(List<string> requiredConfigSections, List<string> configFileSections)
     {
         var missingSections = new List<string>();
 
@@ -101,11 +99,12 @@ public class MTXConfig : ISessionConfiguration
             }
         }
 
-        // if (missingSections.Any())
-        // {
-        //     throw new InvalidOperationException($"The configuration file is missing the following sections: {string.Join(", ", missingSections)}");
-        // }
-        return missingSections;
+        if (missingSections.Any())
+        {
+            throw new InvalidOperationException($"The configuration file is missing the following sections: {string.Join(", ", missingSections)}");
+        }
+
+        return 0;
     }
 
     private string[,]? ParseSymbolsBarData(ConfigParser configFileFromPath)
