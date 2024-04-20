@@ -4,15 +4,16 @@ using System.Threading;
 using Newtonsoft.Json.Linq;
 using TradingAPIs.Common;
 using TradingAPIs.Common.Loggers;
+using TradingAPIs.Common.Orders;
 using static System.Net.Mime.MediaTypeNames;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using ThreadState = System.Threading.ThreadState;
 
-namespace TradingAPIs.MetaTrader;
-public class MetaTraderClient : IConnectionClient
+namespace TradingAPIs.MetaTrader.MTXConnect;
+public class MTXClient : IConnectionClient
 {
-    private MTConfiguration _config;
-    private readonly IMTEventHandler _eventHandler;
+    private MTXConfig _config;
+    private readonly IMTXEventHandler _eventHandler;
     private string _metaTraderDirPath;  // { get; private set; }
     private bool _developMql = false;
     private readonly Logger _logger;
@@ -70,11 +71,11 @@ public class MetaTraderClient : IConnectionClient
     private readonly Thread _barDataThread;
     private readonly Thread _historicDataThread;
 
-    private readonly ThreadStates _threadStates;
+    private readonly MTXClientThreadStates _threadStates;
 
     public bool SubscribesToTickData { get; set; }
     public bool SubscribesToBarData { get; set; }
-    
+
     // public bool StartCheckHistoricDataThread { get; set; }
     public string[] SymbolsMarketData { get; set; }
     public string[,] SymbolsBarData { get; set; }
@@ -90,7 +91,7 @@ public class MetaTraderClient : IConnectionClient
     // }
 
     // Constructor definition with parameters for configuration
-    public MetaTraderClient(MTConfiguration config, MTEventHandler eventHandler, Logger? logger = null)
+    public MTXClient(MTXConfig config, MTXEventHandler eventHandler, Logger? logger = null)
     {
         if (logger == null)
         {
@@ -182,7 +183,7 @@ public class MetaTraderClient : IConnectionClient
         _barDataThread = new Thread(() => CheckBarData());
         _historicDataThread = new Thread(() => CheckHistoricData());
 
-        _threadStates = new ThreadStates(_messageThread, _openOrdersThread, _marketDataThread, _barDataThread, _historicDataThread);
+        _threadStates = new MTXClientThreadStates(_messageThread, _openOrdersThread, _marketDataThread, _barDataThread, _historicDataThread);
 
         // Start the threads which are configured to start
         _logger.Log("MTConnectionClient | Starting threads for continuous data processing...");
@@ -259,7 +260,7 @@ public class MetaTraderClient : IConnectionClient
         _logger.Log("MTConnectionClient | Initialization complete.");
     }
 
-    public MetaTraderClient(string pathHistoricTrades)
+    public MTXClient(string pathHistoricTrades)
     {
         _pathHistoricTrades = pathHistoricTrades;
     }
@@ -308,6 +309,7 @@ public class MetaTraderClient : IConnectionClient
     }
 
 
+
     private Dictionary<string, ThreadState> GetThreadStates()
     {
         var ThreadStates = new Dictionary<string, ThreadState>();
@@ -331,7 +333,7 @@ public class MetaTraderClient : IConnectionClient
     private static bool IsThreadRunning(Thread thread)
     {
         if (thread == null || !thread.IsAlive)
-             return false;
+            return false;
 
         if (thread.ThreadState == ThreadState.Running)
             return true;
@@ -352,7 +354,7 @@ public class MetaTraderClient : IConnectionClient
             if (!_start)
                 continue;
 
-            string text = MTHelpers.TryReadFile(_pathOrders);
+            string text = MTXHelpers.TryReadFile(_pathOrders);
 
             if (text.Length == 0 || text.Equals(_lastOpenOrdersStr))
                 continue;
@@ -401,7 +403,7 @@ public class MetaTraderClient : IConnectionClient
             _accountInfo = (JObject)data["account_info"];
 
             if (_loadOrdersFromFile)
-                MTHelpers.TryWriteToFile(_pathOrdersStored, data.ToString());
+                MTXHelpers.TryWriteToFile(_pathOrdersStored, data.ToString());
 
             if (_eventHandler != null && newEvent)
                 _eventHandler.OnOrderEvent(this);
@@ -421,7 +423,7 @@ public class MetaTraderClient : IConnectionClient
             if (!_start)
                 continue;
 
-            string text = MTHelpers.TryReadFile(_pathMessages);
+            string text = MTXHelpers.TryReadFile(_pathMessages);
 
             if (text.Length == 0 || text.Equals(_lastMessagesStr))
                 continue;
@@ -459,7 +461,7 @@ public class MetaTraderClient : IConnectionClient
             {
                 if (data[millisStr] != null)
                 {
-                    long millis = Int64.Parse(millisStr);
+                    long millis = long.Parse(millisStr);
                     if (millis > _lastMessagesMillis)
                     {
                         _lastMessagesMillis = millis;
@@ -468,7 +470,10 @@ public class MetaTraderClient : IConnectionClient
                     }
                 }
             }
-            MTHelpers.TryWriteToFile(_pathMessagesStored, data.ToString());
+
+            if (data.Count > _messages.Count)
+                MTXHelpers.TryWriteToFile(_pathMessagesStored, data.ToString());
+            _messages = data;
         }
     }
 
@@ -486,7 +491,7 @@ public class MetaTraderClient : IConnectionClient
             if (!_start)
                 continue;
 
-            string text = MTHelpers.TryReadFile(_pathMarketData);
+            string text = MTXHelpers.TryReadFile(_pathMarketData);
 
             if (text.Length == 0 || text.Equals(_lastMarketDataStr))
                 continue;
@@ -541,7 +546,7 @@ public class MetaTraderClient : IConnectionClient
             if (!_start)
                 continue;
 
-            string text = MTHelpers.TryReadFile(_pathBarData);
+            string text = MTXHelpers.TryReadFile(_pathBarData);
 
             if (text.Length == 0 || text.Equals(_lastBarDataStr))
                 continue;
@@ -603,7 +608,7 @@ public class MetaTraderClient : IConnectionClient
             if (!_start)
                 continue;
 
-            string text = MTHelpers.TryReadFile(_pathHistoricData);
+            string text = MTXHelpers.TryReadFile(_pathHistoricData);
 
             if (text.Length > 0 && !text.Equals(_lastHistoricDataStr))
             {
@@ -627,7 +632,7 @@ public class MetaTraderClient : IConnectionClient
                         _historicData[x.Key] = data[x.Key];
                     }
 
-                    MTHelpers.TryDeleteFile(_pathHistoricData);
+                    MTXHelpers.TryDeleteFile(_pathHistoricData);
 
                     if (_eventHandler != null)
                     {
@@ -647,7 +652,7 @@ public class MetaTraderClient : IConnectionClient
             }
 
             // also check historic trades in the same thread. 
-            text = MTHelpers.TryReadFile(_pathHistoricTrades);
+            text = MTXHelpers.TryReadFile(_pathHistoricTrades);
 
             if (text.Length > 0 && !text.Equals(_lastHistoricTradesStr))
             {
@@ -668,7 +673,7 @@ public class MetaTraderClient : IConnectionClient
                 {
                     _historicTrades = data;
 
-                    MTHelpers.TryDeleteFile(_pathHistoricTrades);
+                    MTXHelpers.TryDeleteFile(_pathHistoricTrades);
 
                     if (_eventHandler != null)
                         _eventHandler.OnHistoricTrades(this);
@@ -685,7 +690,7 @@ public class MetaTraderClient : IConnectionClient
     private void LoadOrders()
     {
 
-        string text = MTHelpers.TryReadFile(_pathOrdersStored);
+        string text = MTXHelpers.TryReadFile(_pathOrdersStored);
 
         if (text.Length == 0)
             return;
@@ -715,7 +720,7 @@ public class MetaTraderClient : IConnectionClient
     private void LoadMessages()
     {
 
-        string text = MTHelpers.TryReadFile(_pathMessagesStored);
+        string text = MTXHelpers.TryReadFile(_pathMessagesStored);
 
         if (text.Length == 0)
             return;
@@ -740,7 +745,7 @@ public class MetaTraderClient : IConnectionClient
         // here we don't have to sort because we just need the latest millis value. 
         foreach (var x in data)
         {
-            long millis = Int64.Parse(x.Key);
+            long millis = long.Parse(x.Key);
             if (millis > _lastMessagesMillis)
                 _lastMessagesMillis = millis;
         }
@@ -760,7 +765,7 @@ public class MetaTraderClient : IConnectionClient
             processes = Process.GetProcessesByName("terminal");
 
         List<Process> terminalProcesses = new List<Process>();
-        
+
         foreach (Process p in processes)
         {
             var fileDescription = FileVersionInfo.GetVersionInfo(p.MainModule.FileName).FileDescription;
@@ -805,7 +810,7 @@ public class MetaTraderClient : IConnectionClient
 
         if (!_messageThread.IsAlive || !(_messageThread.ThreadState == ThreadState.Running || _messageThread.ThreadState == ThreadState.WaitSleepJoin))
             Console.WriteLine("Client's messageThread isn't running so starting tempMessageThread while checking if the server EA is running.");
-            tempMessageThread.Start();
+        tempMessageThread.Start();
 
         int timeoutSeconds = 10;
         var lastMessagesStrBeforeCommand = _lastMessagesStr;
@@ -845,7 +850,7 @@ public class MetaTraderClient : IConnectionClient
         if (!isRunning)
             Console.WriteLine("Server EA is not running.");
 
-        
+
         tokenSource.Cancel();   // Request cancellation. 
 
         if (tempMessageThread.IsAlive || tempMessageThread.ThreadState == ThreadState.Running || tempMessageThread.ThreadState == ThreadState.WaitSleepJoin)
@@ -856,7 +861,7 @@ public class MetaTraderClient : IConnectionClient
             throw new InvalidOperationException("_messageThread & tempMessageThread are not running. Cannot check if server EA is running");
 
         tokenSource.Dispose();  // Dispose the token source.
-        
+
         return isRunning;
     }
 
@@ -987,10 +992,53 @@ public class MetaTraderClient : IConnectionClient
         expriation (long): Expiration time given as timestamp in seconds. 
             Can be zero if the order should not have an expiration time.  
     */
-    public void OpenOrder(string symbol, string orderType, double lots, double price, double stopLoss, double takeProfit, int magic, string comment, long expiration)
+    public bool OpenOrder(string symbol, string orderType, double lots, double price, double stopLoss, double takeProfit, int magic, string comment, long expiration, string? orderId = null, bool verifyExecution = true, int verificationTimeoutSeconds = 5)
     {
-        string content = symbol + "," + orderType + "," + MTHelpers.Format(lots) + "," + MTHelpers.Format(price) + "," + MTHelpers.Format(stopLoss) + "," + MTHelpers.Format(takeProfit) + "," + magic + "," + comment + "," + expiration;
+        if (orderId == null)
+            orderId = Order.GenerateNewId();
+
+        string orderTypeStr = orderType.ToString().ToLower();
+        string lotsFormatted = MTXHelpers.Format(lots);
+        string priceFormatted = MTXHelpers.Format(price);
+        string stopLossFormatted = MTXHelpers.Format(stopLoss);
+        string takeProfitFormatted = MTXHelpers.Format(takeProfit);
+
+        // string content = $"{symbol},{orderTypeStr},{lotsFormatted},{priceFormatted},{stopLossFormatted},{takeProfitFormatted},{magic},{comment},{expiration}";
+        string content = $"{orderId},{symbol},{orderTypeStr},{lotsFormatted},{priceFormatted},{stopLossFormatted},{takeProfitFormatted},{magic},{comment},{expiration}";
+
+        Console.WriteLine("\n--------------------------------\nSending OPEN_ORDER command:\n" 
+                         + $"orderId: {orderId}\n" 
+                         + $"content: {content}\n"
+                         + $"symbol: {symbol}\n"
+                         + $"orderType: {orderType}\n"
+                         + $"lots: {lotsFormatted}\n"
+                         + $"price: {priceFormatted}\n"
+                         + $"stopLoss: {stopLossFormatted}\n"
+                         + $"takeProfit: {takeProfitFormatted}\n"
+                         + $"magic: {magic}\n"
+                         + $"comment: {comment}\n");
+
         SendCommand("OPEN_ORDER", content);
+
+        if (verifyExecution)
+        {
+            DateTime now = DateTime.UtcNow;
+            DateTime endTime = DateTime.UtcNow + new TimeSpan(0, 0, verificationTimeoutSeconds);
+            while (now < endTime)
+            {
+                if (_openOrders.Count > 0)
+                    Console.WriteLine($"Succesfully opened new order: ");
+                return true;
+                Thread.Sleep(100);
+                now = DateTime.UtcNow;
+            }
+
+            Console.WriteLine("Failed to open new order.");
+            return false;
+        }
+
+        Console.WriteLine("Note: verifyExecution was set to false when calling the OpenOrder method, so it has not been verified whether the order was succesfully opened or not.");
+        return false;
     }
 
 
@@ -1009,7 +1057,7 @@ public class MetaTraderClient : IConnectionClient
 		*/
     public void ModifyOrder(int ticket, double lots, double price, double stopLoss, double takeProfit, long expiration)
     {
-        string content = ticket + "," + MTHelpers.Format(lots) + "," + MTHelpers.Format(price) + "," + MTHelpers.Format(stopLoss) + "," + MTHelpers.Format(takeProfit) + "," + expiration;
+        string content = ticket + "," + MTXHelpers.Format(lots) + "," + MTXHelpers.Format(price) + "," + MTXHelpers.Format(stopLoss) + "," + MTXHelpers.Format(takeProfit) + "," + expiration;
         SendCommand("MODIFY_ORDER", content);
     }
 
@@ -1023,7 +1071,7 @@ public class MetaTraderClient : IConnectionClient
     */
     public void CloseOrder(int ticket, double lots = 0)
     {
-        string content = ticket + "," + MTHelpers.Format(lots);
+        string content = ticket + "," + MTXHelpers.Format(lots);
         SendCommand("CLOSE_ORDER", content);
     }
 
@@ -1165,7 +1213,7 @@ public class MetaTraderClient : IConnectionClient
                 for (int i = 0; i < MaxCommandFiles; i++)
                 {
                     string filePath = _pathCommandsPrefix + i + ".txt";
-                    if (!File.Exists(filePath) && MTHelpers.TryWriteToFile(filePath, text))
+                    if (!File.Exists(filePath) && MTXHelpers.TryWriteToFile(filePath, text))
                     {
                         success = true;
                         break;
@@ -1204,11 +1252,16 @@ public class MetaTraderClient : IConnectionClient
         while (now < endTime)
         {
             bool success = false;
-            
+
             if (success) break;
             Thread.Sleep(_sleepDelayMilliseconds);
             now = DateTime.UtcNow;
         }
+    }
+
+    private object GetMqlParamValue(string paramName)
+    {
+        throw new NotImplementedException();
     }
 
     private string GetMqlParamValueStr(string paramName)
@@ -1227,9 +1280,10 @@ public class MetaTraderClient : IConnectionClient
 
     internal int GetMqlIntParam(string paramName)
     {
-        string paramValueStr = GetMqlParamValueStr(paramName);
-        
-        return Int32.Parse(paramValueStr);
+        // string paramValueStr = GetMqlParamValueStr(paramName);
+
+        // return Int32.Parse(paramValueStr);
+        throw new NotImplementedException();
     }
 
     internal bool SetMqlIntParam(string paramName, int value)

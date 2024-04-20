@@ -1,9 +1,9 @@
 ﻿using Salaros.Configuration;
 using TradingAPIs.Common;
 
-namespace TradingAPIs.MetaTrader;
+namespace TradingAPIs.MetaTrader.MTXConnect;
 
-public class MTConfiguration : ISessionConfiguration
+public class MTXConfig : ISessionConfiguration
 {
     private string _name;
     private string _accountIdStr;
@@ -47,8 +47,11 @@ public class MTConfiguration : ISessionConfiguration
 
 
     // Constructor for the MT4Configuration class that initializes configuration using a specified file path.
-    public MTConfiguration(string configFilePath)
+    public MTXConfig(string configFilePath)
     {
+        if (!File.Exists(configFilePath))
+            throw new FileNotFoundException("The MetaTrader configuration file was not found", configFilePath);
+
         // Initialize a ConfigParser object with custom settings to parse the configuration file.
         var configFileFromPath = new ConfigParser(configFilePath, new ConfigParserSettings
         {
@@ -59,10 +62,10 @@ public class MTConfiguration : ISessionConfiguration
 
         // Check if the configFileFromPath is null which means the configuration file couldn't be loaded.
         if (configFileFromPath == null)
-            throw new Exception("The configuration file is null");
+            throw new Exception("The MetaTrader configuration file is null");
         // Check if the configuration file is empty by looking at the count of lines in the file.
         else if (configFileFromPath.Lines.Count == 0)
-            throw new Exception("The configuration file is empty");
+            throw new Exception("The MetaTrader configuration file is empty");
 
 
         // Extract section names from the configFileSections into a list for easier processing.
@@ -173,7 +176,7 @@ public class MTConfiguration : ISessionConfiguration
         return ret;
     }
 
-    public MTConfiguration(string metaTraderDirPath, string name, bool subscribeToTickData = true, bool subscribeToBarData = false, string[] SymbolsMarketData = null, string[,] symbolsBarData = null)
+    public MTXConfig(string metaTraderDirPath, string name, bool subscribeToTickData = true, bool subscribeToBarData = false, string[] SymbolsMarketData = null, string[,] symbolsBarData = null)
     {
         _name = name;
         _metaTraderDirPath = metaTraderDirPath;

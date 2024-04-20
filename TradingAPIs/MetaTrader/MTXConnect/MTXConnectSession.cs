@@ -2,18 +2,18 @@
 using TradingAPIs.Common.Loggers;
 using TradingAPIs.Common.Orders;
 
-namespace TradingAPIs.MetaTrader;
+namespace TradingAPIs.MetaTrader.MTXConnect;
 
-public class MetaTraderSession : ClientSession
+public class MTXConnectSession : ClientSession
 {
     private Thread _instanceThread;
-    private MTConfiguration _config;
-    private MTEventHandler _eventHandler;
-    private MetaTraderClient _client;
+    private MTXConfig _config;
+    private MTXEventHandler _eventHandler;
+    private MTXClient _client;
     private Logger _logger;
 
 
-    public MetaTraderSession(MTConfiguration config, MetaTraderClient client, Logger logger) 
+    public MTXConnectSession(MTXConfig config, MTXClient client, Logger logger)
         : base(client, logger)
     {
         // Initialize the config and the thread
@@ -25,26 +25,26 @@ public class MetaTraderSession : ClientSession
 
     public override void SubscribeToTickData()
     {
-        throw new System.NotImplementedException();
+        throw new NotImplementedException();
     }
 
     public override void UnsubscribeToTickData()
     {
-        throw new System.NotImplementedException();
+        throw new NotImplementedException();
     }
 
     public override IOrder PlaceOrder(IOrder order)
     {
-        throw new System.NotImplementedException();
+        throw new NotImplementedException();
     }
 
     public override IOrder ModifyOrder(IOrder order)
     {
-        throw new System.NotImplementedException();
+        throw new NotImplementedException();
     }
 
     public override IOrder CloseOrder(IOrder order)
     {
-        throw new System.NotImplementedException();
+        throw new NotImplementedException();
     }
 }

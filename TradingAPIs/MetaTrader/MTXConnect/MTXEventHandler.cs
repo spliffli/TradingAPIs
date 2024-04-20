@@ -2,16 +2,16 @@
 using TradingAPIs.Common;
 using TradingAPIs.Common.Loggers;
 
-namespace TradingAPIs.MetaTrader;
+namespace TradingAPIs.MetaTrader.MTXConnect;
 
-public class MTEventHandler : IMTEventHandler, IEventHandler
+public class MTXEventHandler : IMTXEventHandler, IEventHandler
 {
-    private MTConfiguration _config;
+    private MTXConfig _config;
     private Logger _logger;
     private bool _verbose;
 
     // Constructor
-    public MTEventHandler(Logger? logger = null, bool verbose=true)
+    public MTXEventHandler(Logger? logger = null, bool verbose = true)
     {
         if (logger == null)
             _logger = new ConsoleLogger();
@@ -23,7 +23,7 @@ public class MTEventHandler : IMTEventHandler, IEventHandler
 
 
     // OnTick method to handle tick data from MT4
-    public void OnTick(MetaTraderClient client, string symbol, double bid, double ask)
+    public void OnTick(MTXClient client, string symbol, double bid, double ask)
     {
         // Logic to process the tick data
         // For example, logging the tick data or performing some analysis
@@ -44,7 +44,7 @@ public class MTEventHandler : IMTEventHandler, IEventHandler
         // }
     }
 
-    public void OnBarData(MetaTraderClient client, string symbol, string timeFrame, string time, double open, double high,
+    public void OnBarData(MTXClient client, string symbol, string timeFrame, string time, double open, double high,
         double low, double close, int tickVolume)
     {
         Console.WriteLine("onBarData: " + symbol + ", " + timeFrame + ", " + time + ", " + open + ", " + high + ", " + low + ", " + close + ", " + tickVolume);
@@ -53,18 +53,18 @@ public class MTEventHandler : IMTEventHandler, IEventHandler
             Console.WriteLine(x.Key + ": " + x.Value);
     }
 
-    public void OnHistoricData(MetaTraderClient client, string symbol, string timeFrame, JObject data)
+    public void OnHistoricData(MTXClient client, string symbol, string timeFrame, JObject data)
     {
         // you can also access historic data via: client.HistoricData.keySet()
         Console.WriteLine("onHistoricData: " + symbol + ", " + timeFrame + ", " + data);
     }
 
-    public void OnHistoricTrades(MetaTraderClient client)
+    public void OnHistoricTrades(MTXClient client)
     {
         Console.WriteLine("OnHistoricTrades: " + client.HistoricTrades);
     }
 
-    public void OnMessage(MetaTraderClient client, JObject message)
+    public void OnMessage(MTXClient client, JObject message)
     {
         if (((string)message["type"]).Equals("ERROR"))
             Console.WriteLine(message["type"] + " | " + message["error_type"] + " | " + message["description"]);
@@ -72,7 +72,7 @@ public class MTEventHandler : IMTEventHandler, IEventHandler
             Console.WriteLine(message["type"] + " | " + message["message"]);
     }
 
-    public void OnOrderEvent(MetaTraderClient client)
+    public void OnOrderEvent(MTXClient client)
     {
         Console.WriteLine("onOrderEvent: " + client.OpenOrders.Count + " open orders");
 

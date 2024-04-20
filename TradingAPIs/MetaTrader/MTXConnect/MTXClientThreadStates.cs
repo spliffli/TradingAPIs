@@ -1,6 +1,6 @@
-﻿namespace TradingAPIs.MetaTrader;
+﻿namespace TradingAPIs.MetaTrader.MTXConnect;
 
-struct ThreadStates
+struct MTXClientThreadStates
 {
     private readonly Thread _messageThread;
     private readonly Thread _openOrdersThread;
@@ -14,7 +14,7 @@ struct ThreadStates
     public ThreadState BarDataThread { get { return _barDataThread.ThreadState; } }
     public ThreadState HistoricDataThread { get { return _historicDataThread.ThreadState; } }
 
-    public ThreadStates(Thread messageThread, Thread openOrdersThread, Thread marketDataThread, Thread barDataThread, Thread historicDataThread)
+    public MTXClientThreadStates(Thread messageThread, Thread openOrdersThread, Thread marketDataThread, Thread barDataThread, Thread historicDataThread)
     {
         _messageThread = messageThread;
         _openOrdersThread = openOrdersThread;
@@ -25,10 +25,10 @@ struct ThreadStates
 
     public string ToString()
     {
-        return ("MessageThread: " + MessageThread
+        return "MessageThread: " + MessageThread
             + "\nOpenOrdersThread: " + OpenOrdersThread
             + "\nMarketDataThread: " + MarketDataThread
             + "\nBarDataThread: " + BarDataThread
-            + "\nHistoricDataThread: " + HistoricDataThread);
+            + "\nHistoricDataThread: " + HistoricDataThread;
     }
 }

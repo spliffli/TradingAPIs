@@ -1,18 +1,20 @@
-﻿namespace TradingAPIs.MetaTrader;
+﻿/*
+
+namespace TradingAPIs.MetaTrader.MTXConnect;
 
 public class MqlParams
 {
-    private Dictionary<string, object> _dict = new Dictionary<string, object>();
+    private Dictionary<string, object> _dict = [];
 
-    private MetaTraderClient _client;
+    private MTXClient _client;
 
 
-    public MqlParams(MetaTraderClient client)
+    public MqlParams(MTXClient client)
     {
         _client = client;
     }
     public int MillisecondTimer
-    { 
+    {
         get { return _client.GetMqlIntParam("millisecondTimer"); }
         set { _client.SetMqlIntParam("millisecondTimer", value); }
     }
@@ -47,4 +49,13 @@ public class MqlParams
         set { _client.SetMqlIntParam("slippagePoints", value); }
     }
 
+
+    public int GetMqlIntParam()
+    {
+        throw new NotImplementedException();
+        //return _client.GetMqlIntParam();
+    }
+
 }
+
+*/

@@ -1,6 +1,6 @@
 ﻿namespace TradingAPIs.Common
 {
-    internal interface IConnectionClient
+    public interface IConnectionClient
     {
         void Start();
     }

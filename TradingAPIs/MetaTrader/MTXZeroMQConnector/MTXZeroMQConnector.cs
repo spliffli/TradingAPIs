@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 using NetMQ;
 // using NetMQ.Monitoring;
 
-namespace TradingAPIs.MetaTraderZmq;
+namespace TradingAPIs.MetaTrader.MTXZeroMQConnector;
 
-internal class ZeroMQConnector
+internal class MTXZeroMQConnector
 {
     public bool IsConnected { get; private set; } = false;
     public bool IsActive { get; private set; } = false;
@@ -27,19 +27,19 @@ internal class ZeroMQConnector
     public int PollTimeoutMs { get; init; }
     public int SleepDelayMs { get; init; }
     public bool ShouldMonitor { get; init; }
-    public ZeroMQConnector(string clientId      = "DefaultZeroMQConnector",
-                           string host          = "localhost",
-                           string protocol      = "tcp",
-                           int pushPort         = 32768,
-                           int pullPort         = 32769,
-                           int subPort          = 32770,
-                           char delimiter       = ';',
+    public MTXZeroMQConnector(string clientId = "DefaultZeroMQConnector",
+                           string host = "localhost",
+                           string protocol = "tcp",
+                           int pushPort = 32768,
+                           int pullPort = 32769,
+                           int subPort = 32770,
+                           char delimiter = ';',
                            object[]? pullDataHandlers = null,
-                           object[]? subDataHandlers  = null,
-                           bool verbose         = true,
-                           int pollTimeoutMs    = 1000,
-                           int sleepDelayMs     = 1000,
-                           bool shouldMonitor   = false)
+                           object[]? subDataHandlers = null,
+                           bool verbose = true,
+                           int pollTimeoutMs = 1000,
+                           int sleepDelayMs = 1000,
+                           bool shouldMonitor = false)
     {
         IsActive = true;
         ClientId = clientId;
