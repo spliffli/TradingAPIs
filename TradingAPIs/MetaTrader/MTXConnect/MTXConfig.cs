@@ -5,25 +5,45 @@ namespace TradingAPIs.MetaTrader.MTXConnect;
 
 public class MTXConfig : ISessionConfiguration
 {
-    public string Name { get; set; }
-    public string AccountId { get; set; }
-    public string MetaTraderDirPath { get; }
+    private string _name;
+    private string _accountIdStr;
+    private string _metaTraderDirPath;
 
-    public int SleepDelayMilliseconds { get; } = 5;
-    public int MaxRetryCommandSeconds { get; } = 10;
-    public bool LoadOrdersFromFile { get; } = true;
-    public bool Verbose { get; } = true;
+    private int _sleepDelayMilliseconds = 5;
+    private int _maxRetryCommandSeconds = 10;
+    private bool _loadOrdersFromFile = true;
+    private bool _verbose = true;
 
-    public bool StartMessageThread { get; }
-    public bool StartOpenOrdersThread { get; }
-    public bool StartMarketDataThread { get; }
-    public bool StartBarDataThread { get; }
-    public bool StartHistoricDataThread { get; }
+    private bool _startMessageThread;
+    private bool _startOpenOrdersThread;
+    private bool _startMarketDataThread;
+    private bool _startBarDataThread;
+    private bool _startHistoricDataThread;
 
-    public bool SubscribeToTickData { get; }
-    public bool SubscribeToBarData { get; }
-    public string[] SymbolsMarketData { get; }
-    public string[,] SymbolsBarData { get; }
+    private bool _subscribeToTickData;
+    private bool _subscribeToBarData;
+    private string[] _symbolsMarketData;
+    private string[,] _symbolsBarData;
+
+    public string Name { get { return _name; } set { _name = value; } }
+    public string AccountId { get { return _accountIdStr; } set { _accountIdStr = value; } }
+    public string MetaTraderDirPath { get { return _metaTraderDirPath; } }
+
+    public int SleepDelayMilliseconds { get { return _sleepDelayMilliseconds; } }
+    public int MaxRetryCommandSeconds { get { return _maxRetryCommandSeconds; } }
+    public bool LoadOrdersFromFile { get { return _loadOrdersFromFile; } }
+    public bool Verbose { get { return _verbose; } }
+
+    public bool StartMessageThread { get { return _startMessageThread; } }
+    public bool StartOpenOrdersThread { get { return _startOpenOrdersThread; } }
+    public bool StartMarketDataThread { get { return _startMarketDataThread; } }
+    public bool StartBarDataThread { get { return _startBarDataThread; } }
+    public bool StartHistoricDataThread { get { return _startHistoricDataThread; } }
+
+    public bool SubscribeToTickData { get { return _subscribeToTickData; } }
+    public bool SubscribeToBarData { get { return _subscribeToBarData; } }
+    public string[] SymbolsMarketData { get { return _symbolsMarketData; } }
+    public string[,] SymbolsBarData { get { return _symbolsBarData; } }
 
 
     // Constructor for the MT4Configuration class that initializes configuration using a specified file path.
@@ -54,7 +74,9 @@ public class MTXConfig : ISessionConfiguration
         var requiredConfigSections = new List<string> { "[MetaData]", "[Init]", "[Threads]", "[DataSubscriptions]", "[Symbols]", "[Symbols.BarData]" };
 
         // Check if any required sections are missing from the configuration file and throw an exception if so.
-        CheckIfSectionsMissing(requiredConfigSections, configFileSections);
+        var missingSections = CheckForMissingSections(requiredConfigSections, configFileSections);
+        if (missingSections.Any())
+            throw new InvalidOperationException($"The configuration file is missing the following sections: {string.Join(", ", missingSections)}");
 
 
         // Retrieve specific values from the configuration file, such as instance name and directory path.
@@ -87,7 +109,7 @@ public class MTXConfig : ISessionConfiguration
     }
 
 
-    private static int CheckIfSectionsMissing(List<string> requiredConfigSections, List<string> configFileSections)
+    private static List<string> CheckForMissingSections(List<string> requiredConfigSections, List<string> configFileSections)
     {
         var missingSections = new List<string>();
 
@@ -99,12 +121,11 @@ public class MTXConfig : ISessionConfiguration
             }
         }
 
-        if (missingSections.Any())
-        {
-            throw new InvalidOperationException($"The configuration file is missing the following sections: {string.Join(", ", missingSections)}");
-        }
-
-        return 0;
+        // if (missingSections.Any())
+        // {
+        //     throw new InvalidOperationException($"The configuration file is missing the following sections: {string.Join(", ", missingSections)}");
+        // }
+        return missingSections;
     }
 
     private string[,]? ParseSymbolsBarData(ConfigParser configFileFromPath)
