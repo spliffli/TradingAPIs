@@ -5,45 +5,25 @@ namespace TradingAPIs.MetaTrader.MTXConnect;
 
 public class MTXConfig : ISessionConfiguration
 {
-    private string _name;
-    private string _accountIdStr;
-    private string _metaTraderDirPath;
+    public string Name { get; set; }
+    public string AccountId { get; set; }
+    public string MetaTraderDirPath { get; }
 
-    private int _sleepDelayMilliseconds = 5;
-    private int _maxRetryCommandSeconds = 10;
-    private bool _loadOrdersFromFile = true;
-    private bool _verbose = true;
+    public int SleepDelayMilliseconds { get; } = 5;
+    public int MaxRetryCommandSeconds { get; } = 10;
+    public bool LoadOrdersFromFile { get; } = true;
+    public bool Verbose { get; } = true;
 
-    private bool _startMessageThread;
-    private bool _startOpenOrdersThread;
-    private bool _startMarketDataThread;
-    private bool _startBarDataThread;
-    private bool _startHistoricDataThread;
+    public bool StartMessageThread { get; }
+    public bool StartOpenOrdersThread { get; }
+    public bool StartMarketDataThread { get; }
+    public bool StartBarDataThread { get; }
+    public bool StartHistoricDataThread { get; }
 
-    private bool _subscribeToTickData;
-    private bool _subscribeToBarData;
-    private string[] _symbolsMarketData;
-    private string[,] _symbolsBarData;
-
-    public string Name { get { return _name; } set { _name = value; } }
-    public string AccountId { get { return _accountIdStr; } set { _accountIdStr = value; } }
-    public string MetaTraderDirPath { get { return _metaTraderDirPath; } }
-
-    public int SleepDelayMilliseconds { get { return _sleepDelayMilliseconds; } }
-    public int MaxRetryCommandSeconds { get { return _maxRetryCommandSeconds; } }
-    public bool LoadOrdersFromFile { get { return _loadOrdersFromFile; } }
-    public bool Verbose { get { return _verbose; } }
-
-    public bool StartMessageThread { get { return _startMessageThread; } }
-    public bool StartOpenOrdersThread { get { return _startOpenOrdersThread; } }
-    public bool StartMarketDataThread { get { return _startMarketDataThread; } }
-    public bool StartBarDataThread { get { return _startBarDataThread; } }
-    public bool StartHistoricDataThread { get { return _startHistoricDataThread; } }
-
-    public bool SubscribeToTickData { get { return _subscribeToTickData; } }
-    public bool SubscribeToBarData { get { return _subscribeToBarData; } }
-    public string[] SymbolsMarketData { get { return _symbolsMarketData; } }
-    public string[,] SymbolsBarData { get { return _symbolsBarData; } }
+    public bool SubscribeToTickData { get; }
+    public bool SubscribeToBarData { get; }
+    public string[] SymbolsMarketData { get; }
+    public string[,] SymbolsBarData { get; }
 
 
     // Constructor for the MT4Configuration class that initializes configuration using a specified file path.
